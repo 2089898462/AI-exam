@@ -1,0 +1,64 @@
+{
+  "title": "2026 前端工程师招聘笔试",
+  "exam_code": "FE-TEST-001",
+  "position": "前端工程师",
+  "description": "用于考察前端工程师基础能力，涵盖 HTML/CSS/JS/Vue 等知识点",
+  "duration_minutes": 60,
+  "pass_score": 60,
+  "questions": [
+    {
+      "type": "single_choice",
+      "question_no": "Q1",
+      "category": "HTML",
+      "content": "以下哪个 HTML 标签用于创建无序列表？",
+      "options": [
+        {"label": "A", "text": "<ol>"},
+        {"label": "B", "text": "<ul>"},
+        {"label": "C", "text": "<li>"},
+        {"label": "D", "text": "<dl>"}
+      ],
+      "answer": "B",
+      "score": 5,
+      "sort_order": 1
+    },
+    {
+      "type": "single_choice",
+      "question_no": "Q2",
+      "category": "CSS",
+      "content": "以下哪个 CSS 属性可以将元素定位到页面的正中央？",
+      "options": [
+        {"label": "A", "text": "float: center"},
+        {"label": "B", "text": "position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%)"},
+        {"label": "C", "text": "align: center"},
+        {"label": "D", "text": "display: inline-center"}
+      ],
+      "answer": "B",
+      "score": 5,
+      "sort_order": 2
+    },
+    {
+      "type": "multiple_choice",
+      "question_no": "Q3",
+      "category": "JavaScript",
+      "content": "以下哪些是 JavaScript 的基本数据类型？（多选）",
+      "options": [
+        {"label": "A", "text": "string"},
+        {"label": "B", "text": "number"},
+        {"label": "C", "text": "array"},
+        {"label": "D", "text": "boolean"}
+      ],
+      "answer": "A,B,D",
+      "score": 10,
+      "sort_order": 3
+    },
+    {
+      "type": "essay",
+      "question_no": "Q4",
+      "category": "Vue",
+      "content": "请简述 Vue3 的 Composition API 与 Options API 的主要区别和优势。",
+      "answer": "Composition API 允许按逻辑关注点组织代码，支持更灵活的复用和类型推导，在大型组件中提高可读性和可维护性。",
+      "score": 15,
+      "sort_order": 4
+    }
+  ]
+}

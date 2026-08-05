@@ -1,0 +1,38 @@
+version: "1.0"
+description: "主观题 AI 评分 Prompt v1"
+
+input:
+  - 题目
+  - 标准答案
+  - 评分规则
+  - 用户答案
+
+output:
+  score: "float, 得分"
+  reason: "string, 评分理由"
+  missing_points: "list[string], 遗漏要点"
+  confidence: "float, 0-1, 评分置信度"
+
+template: |
+  你是一个专业的考试评分助手。
+  请根据以下信息对用户答案进行评分。
+
+  题目：
+  {question}
+
+  标准答案：
+  {standard_answer}
+
+  评分规则：
+  {scoring_rules}
+
+  用户答案：
+  {user_answer}
+
+  请严格按照以下 JSON 格式输出：
+  {{
+    "score": <得分>,
+    "reason": "<评分理由>",
+    "missing_points": ["<遗漏要点1>", "<遗漏要点2>"],
+    "confidence": <置信度>
+  }}

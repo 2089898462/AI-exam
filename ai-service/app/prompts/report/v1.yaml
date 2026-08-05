@@ -1,0 +1,26 @@
+version: "1.0"
+description: "能力分析报告生成 Prompt v1"
+
+input:
+  - 考试结果数据
+  - 各题目得分
+  - 各题目类型
+
+output:
+  strengths: "list[string], 优势能力"
+  weaknesses: "list[string], 薄弱能力"
+  learning_suggestions: "list[string], 学习建议"
+
+template: |
+  你是一个专业的能力分析专家。
+  请根据以下考试结果生成能力分析报告。
+
+  考试结果：
+  {exam_results}
+
+  请严格按照以下 JSON 格式输出：
+  {{
+    "strengths": ["<优势能力1>", "<优势能力2>"],
+    "weaknesses": ["<薄弱能力1>", "<薄弱能力2>"],
+    "learning_suggestions": ["<学习建议1>", "<学习建议2>"]
+  }}
