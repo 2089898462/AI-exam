@@ -153,7 +153,20 @@ async function loadPaper() {
   loading.value = true
   error.value = ''
   try {
+    // 1. 加载试卷（题目列表）
     await examStore.loadExamPaper(recordId.value)
+    
+    // 2. 加载历史答案（恢复进度）
+    try {
+      const historyAnswers = await examStore.loadHistoryAnswers()
+      if (historyAnswers && historyAnswers.length > 0) {
+        ElMessage.info(`已恢复 ${historyAnswers.length} 道题的答案`)
+      }
+    } catch (err) {
+      // 历史答案加载失败不影响主流程
+      console.warn('加载历史答案失败:', err)
+    }
+    
     loading.value = false
   } catch (err) {
     console.error('加载试卷失败:', err)

@@ -107,6 +107,39 @@ export const useExamStore = defineStore('exam', {
       }
       this.answers = map
     },
+    async loadHistoryAnswers() {
+      const res = await examRecordApi.getAnswers(this.recordId)
+      const historyAnswers = res.data || []
+      
+      for (const record of historyAnswers) {
+        const questionId = record.question_id
+        const answerContent = record.answer_content
+        
+        if (answerContent === null || answerContent === undefined || answerContent === '') {
+          continue
+        }
+        
+        // 找到对应题目，判断类型
+        const question = this.questions.find(q => q.id === questionId)
+        if (!question) continue
+        
+        // 根据题型转换答案格式
+        if (question.type === 'multiple_choice') {
+          // 多选：后端存储为 "A,C"，转为数组 ["A", "C"]
+          this.answers[questionId] = answerContent.split(',').filter(Boolean)
+        } else {
+          // 单选、判断、简答：直接使用字符串
+          this.answers[questionId] = answerContent
+        }
+      }
+      
+      // 恢复后标记为干净状态（从服务器恢复，无需保存）
+      this.isDirty = false
+      this.saveError = null
+      this.lastSavedAt = new Date()
+      
+      return historyAnswers
+    },
     setAnswer(questionId, value) {
       this.answers[questionId] = value
       this.isDirty = true

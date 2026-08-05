@@ -485,3 +485,31 @@
   - ✅ 答案持久化：切回题目答案保留
   - ✅ 保存状态展示：三种状态（saving/saved/error）正确显示
   - ✅ 重试机制：保存失败后可重试
+
+### S3.2.3.3 - 刷新恢复与断点续考机制开发
+- **后端新增接口** `GET /api/v1/exam-records/{record_id}/answers`：
+  - 查询考试记录的所有历史答案
+  - 候选人端点无需认证
+  - 返回答案列表（question_id, answer_content 等）
+- **后端 Service 层** `answer_record_service.py`：
+  - `get_answers_by_record()`：查询某考试记录的所有答题
+  - 支持 submitted 状态查询（用于查看已提交的答案）
+- **前端 API** `api/examRecord.js`：
+  - 新增 `getAnswers(recordId)` 方法
+- **前端 Pinia Store** `stores/exam.js`：
+  - 新增 `loadHistoryAnswers()` 方法：从服务器恢复历史答案
+  - 多选题格式转换：后端 "A,C" → 前端 ["A", "C"]
+  - 单选/判断/简答：直接使用字符串
+  - 恢复后自动标记为干净状态（isDirty=false）
+- **前端页面加载流程** `views/exam/Exam.vue`：
+  - 加载试卷后自动加载历史答案
+  - 恢复成功显示"已恢复 X 道题的答案"提示
+  - 历史答案加载失败不影响主流程（try-catch 降级）
+- **浏览器测试结果**：
+  - ✅ 刷新页面恢复：答案正确恢复
+  - ✅ 重新进入恢复：通过 URL 重新访问答案恢复
+  - ✅ 多题恢复：单选/多选/简答三种题型均恢复正确
+  - ✅ 修改后恢复：修改答案后刷新保留最新修改
+  - ✅ 多选格式转换：后端 "A,C" 正确转为前端数组 ["A", "C"]
+  - ✅ 恢复提示：显示"已恢复 X 道题的答案"
+  - ✅ 异常处理：历史答案加载失败不阻断主流程

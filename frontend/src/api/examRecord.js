@@ -9,5 +9,6 @@ export const examRecordApi = {
   submitExam: (id) => request.post(`/exam-records/${id}/submit`),
   saveAnswer: (recordId, data) => request.post(`/exam-records/${recordId}/answers`, data),
   saveAnswersBatch: (recordId, data) => request.post(`/exam-records/${recordId}/answers/batch`, data),
+  getAnswers: (recordId) => request.get(`/exam-records/${recordId}/answers`),
   listRecords: (examId) => request.get(`/exams/${examId}/records`),
 }

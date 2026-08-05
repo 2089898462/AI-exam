@@ -160,6 +160,18 @@ async def save_answers_batch(
     return ApiResponse.success(data=result)
 
 
+@router.get("/{record_id}/answers")
+async def get_exam_answers(
+    record_id: int,
+    db: Session = Depends(get_db),
+):
+    """获取考试记录的历史答案（用于刷新恢复/断点续考）"""
+    service = AnswerRecordService(db)
+    answers = service.get_answers_by_record(record_id)
+    result = [AnswerResponse.model_validate(a).model_dump() for a in answers]
+    return ApiResponse.success(data=result)
+
+
 @router.post("/{record_id}/submit")
 async def submit_exam(
     record_id: int,
