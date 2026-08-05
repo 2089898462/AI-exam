@@ -449,3 +449,39 @@
   - ✅ 错误请求被正确处理
 - **测试脚本**：`backend/test_answer_save_full.py`
   - 无控制台错误
+
+### S3.2.3.2 - 前端自动保存机制开发
+- **扩展 exam Pinia store** `stores/exam.js`：
+  - 新增状态：isSaving / lastSavedAt / saveError / isDirty
+  - 新增 getters：saveStatus / saveStatusText / hasUnsavedChanges
+  - 新增 actions：markClean / saveAnswerToServer / saveAllAnswersToServer
+  - setAnswer() 自动设置 isDirty 标记
+- **新增自动保存 Hook** `hooks/useAutoSave.js`：
+  - 防抖保存（1.5 秒延迟）：避免频繁请求
+  - 脏标记机制：只在真实变更时触发保存
+  - flushSave()：切换题目前立即保存
+  - retrySave()：保存失败后重试
+  - saveAllAnswers()：批量保存所有答案
+  - 组件卸载自动清理定时器
+- **完善 API** `api/examRecord.js`：
+  - saveAnswer(recordId, data)：保存单题答案（已存在）
+  - saveAnswersBatch(recordId, data)：批量保存答案（已存在）
+- **修改答题页面** `views/exam/Exam.vue`：
+  - 接入 useAutoSave hook
+  - 添加保存状态指示器（头部右侧）：
+    - 🔵 保存中：旋转图标 + "保存中..."
+    - 🟢 已保存：对勾图标 + "已保存" + 时间
+    - 🔴 保存失败：警告图标 + "保存失败" + 重试按钮
+  - 切换题目前自动 flushSave 保存
+  - 完成考试前 saveAllAnswers 保存所有答案
+- **添加样式**：保存状态指示器样式（蓝/绿/红三色状态）
+- **浏览器测试结果**：
+  - ✅ 单选保存：选择答案后 1.5 秒自动保存
+  - ✅ 多选保存：选择多选后自动保存
+  - ✅ 简答保存：输入文字后自动保存
+  - ✅ 修改答案覆盖：修改后重新保存
+  - ✅ 防抖验证：快速连续修改只发一次请求
+  - ✅ 切换题目保存：切换前自动 flushSave
+  - ✅ 答案持久化：切回题目答案保留
+  - ✅ 保存状态展示：三种状态（saving/saved/error）正确显示
+  - ✅ 重试机制：保存失败后可重试

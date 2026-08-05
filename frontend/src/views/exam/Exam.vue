@@ -23,6 +23,26 @@
           </div>
         </div>
         <div class="header-right">
+          <div class="save-status" :class="`save-status--${examStore.saveStatus}`">
+            <template v-if="examStore.saveStatus === 'saving'">
+              <el-icon class="is-loading"><Loading /></el-icon>
+              <span>保存中...</span>
+            </template>
+            <template v-else-if="examStore.saveStatus === 'saved'">
+              <el-icon><CircleCheck /></el-icon>
+              <span>已保存</span>
+              <span v-if="examStore.lastSavedAt" class="save-time">
+                {{ formatTime(examStore.lastSavedAt) }}
+              </span>
+            </template>
+            <template v-else-if="examStore.saveStatus === 'error'">
+              <el-icon><Warning /></el-icon>
+              <span>保存失败</span>
+              <el-button link type="primary" size="small" @click="handleRetry">
+                重试
+              </el-button>
+            </template>
+          </div>
           <span class="candidate-label">候选人</span>
           <span class="candidate-name">{{ examStore.candidateName }}</span>
         </div>
@@ -99,8 +119,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Loading } from '@element-plus/icons-vue'
+import { Loading, CircleCheck, Warning } from '@element-plus/icons-vue'
 import { useExamStore } from '@/stores/exam'
+import { useAutoSave } from '@/hooks/useAutoSave'
 import QuestionCard from '@/components/exam/QuestionCard.vue'
 
 const route = useRoute()
@@ -111,6 +132,8 @@ const loading = ref(true)
 const error = ref('')
 const currentIndex = ref(0)
 const recordId = ref(null)
+
+const autoSave = useAutoSave(examStore)
 
 const currentQuestion = computed(() => {
   return examStore.questions[currentIndex.value] || null
@@ -147,26 +170,33 @@ function isAnswered(questionId) {
 }
 
 function handleAnswer(questionId, value) {
-  examStore.setAnswer(questionId, value)
+  autoSave.saveCurrentAnswer(questionId, value)
 }
 
-function goToQuestion(idx) {
+async function goToQuestion(idx) {
+  // 切换题目前先保存当前答案
+  await autoSave.flushSave()
   currentIndex.value = idx
 }
 
-function prevQuestion() {
+async function prevQuestion() {
   if (currentIndex.value > 0) {
+    await autoSave.flushSave()
     currentIndex.value--
   }
 }
 
-function nextQuestion() {
+async function nextQuestion() {
   if (currentIndex.value < examStore.questions.length - 1) {
+    await autoSave.flushSave()
     currentIndex.value++
   }
 }
 
 async function handleFinish() {
+  // 保存所有答案
+  await autoSave.saveAllAnswers()
+
   const unanswered = examStore.questions.filter(
     (q) => !isAnswered(q.id)
   ).length
@@ -188,6 +218,30 @@ async function handleFinish() {
   }
 
   ElMessage.success('考试完成！')
+}
+
+async function handleRetry() {
+  const success = await autoSave.retrySave()
+  if (success) {
+    ElMessage.success('保存成功')
+  } else {
+    ElMessage.error('保存失败，请检查网络连接')
+  }
+}
+
+function formatTime(date) {
+  if (!date) return ''
+  const d = new Date(date)
+  const now = new Date()
+  const diff = Math.floor((now - d) / 1000)
+  
+  if (diff < 10) return '刚刚'
+  if (diff < 60) return `${diff} 秒前`
+  if (diff < 3600) return `${Math.floor(diff / 60)} 分钟前`
+  
+  const h = String(d.getHours()).padStart(2, '0')
+  const m = String(d.getMinutes()).padStart(2, '0')
+  return `${h}:${m}`
 }
 </script>
 
@@ -243,7 +297,37 @@ async function handleFinish() {
 .header-right {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 16px;
+}
+
+.save-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  transition: all 0.3s;
+}
+
+.save-status--saving {
+  color: #409eff;
+  background: #ecf5ff;
+}
+
+.save-status--saved {
+  color: #67c23a;
+  background: #f0f9eb;
+}
+
+.save-status--error {
+  color: #f56c6c;
+  background: #fef0f0;
+}
+
+.save-status .save-time {
+  color: #909399;
+  margin-left: 4px;
 }
 
 .candidate-label {

@@ -14,13 +14,15 @@ app = FastAPI(
     version=settings.VERSION,
 )
 
-# ============================================================
 # CORS 中间件
-# ============================================================
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:3002",
+        "http://localhost:3003",
+        "http://localhost:3004",
         "http://localhost:80",
     ],
     allow_credentials=True,
@@ -28,15 +30,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ============================================================
 # 全局异常处理器
-# ============================================================
 app.add_exception_handler(AppException, app_exception_handler)
 
-# ============================================================
 # API 路由挂载
-# 所有业务接口统一在 /api/v1 下
-# ============================================================
 app.include_router(api_router, prefix="/api")
 
 
