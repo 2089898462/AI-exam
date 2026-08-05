@@ -498,47 +498,51 @@ exam_record ──1:1──▶ ai_report（一次考试一份报告）
 
 # 8. 前端状态
 
-## Vue 项目结构
-```
-frontend/src/
-├── api/index.js              # API 调用封装（空）
-├── hooks/index.js            # 组合式函数（空）
-├── layouts/
-│   ├── AdminLayout.vue       # HR 后台布局（骨架）
-│   └── ExamLayout.vue        # 考生考试布局（骨架）
-├── router/index.js           # 路由配置（空）
-├── utils/request.js          # Axios 封装（空）
-├── App.vue
-└── main.js
-```
+## 前端概述
+- **技术栈**：Vue3 + Vite + Element Plus + Vue Router + Axios + Pinia
+- **端口**：3000
+- **代理**：/api → http://localhost:8000
 
-## 已完成
-- Vue 3 + Vite 初始化
-- Element Plus 集成
-- 路由骨架
-- 布局组件骨架（AdminLayout、ExamLayout）
-- @ 路径别名配置
+## 已实现页面
+| 页面 | 路径 | 说明 |
+|------|------|------|
+| Login | /login | 登录页：用户名/密码登录 + 表单校验 |
+| AdminLayout | /admin/* | HR 后台布局：Header + Sidebar + 用户下拉 |
+| ExamList | /admin/exams | 考试列表：搜索/筛选/分页/状态标签/操作按钮 |
+| ExamCreate | /admin/exams/create | 创建/编辑考试：表单 + 岗位字段 + JSON 导入 |
+| ExamDetail | /admin/exams/:id | 考试详情：只读信息 + 题目列表 + 导入 |
+| Entry | /exam/:id | 候选人考试入口：考试信息 + 身份表单 + 创建记录 |
+| Exam | /exam/record/:id | 候选人答题页：答题卡 + 题目卡片 + 导航 |
 
-## 未完成
-- HR 后台所有页面（登录、考试管理、题目管理、成绩查看）
-- 考生端所有页面（考试列表、考试进行中、结果查看）
-- API 接口对接
-- 状态管理
-- 样式完善
+## 已实现组件
+| 组件 | 路径 | 说明 |
+|------|------|------|
+| ImportExamDialog | components/exam/ | JSON 导入对话框：拖拽上传、结果展示 |
+| QuestionTable | components/exam/ | 题目列表组件：只读/删除 |
+| QuestionCard | components/exam/ | 题目卡片容器：动态渲染题型 |
+| ChoiceQuestion | components/exam/ | 选择题组件：单选/多选/判断题 |
+| TextQuestion | components/exam/ | 简答题组件：Textarea |
 
-## 页面规划
-### HR 后台
-1. 登录页
-2. 考试列表页
-3. 创建/编辑考试页
-4. 题目管理页
-5. 成绩查看页
+## 已实现 API
+- **authApi**：login / getCurrentUser
+- **examApi**：getExamList / getExamDetail / createExam / updateExam / deleteExam / publishExam / closeExam / importExam
+- **questionApi**：getQuestions / createQuestion / deleteQuestion
+- **examRecordApi**：getExamInfo / createRecord / getRecord / getExamPaper / startExam / submitExam / saveAnswer / saveAnswersBatch / listRecords
 
-### 考生端
-1. 考试列表页
-2. 考试进行中页
-3. 成绩详情页
-4. AI 报告查看页
+## 已实现基础设施
+- Token 管理（utils/auth.js：localStorage）
+- Pinia 用户 Store（stores/user.js：login/logout/getUserInfo）
+- Pinia 考试 Store（stores/exam.js：examId / recordId / 候选人信息 / answers）
+- Axios 拦截器（自动附加 Authorization + 401 处理）
+- 路由守卫（router/guard.js：认证检查 + 重定向）
+
+## 待开发
+- 答案自动保存功能
+- 提交考试流程（前端对接）
+- 考试完成页面
+- 成绩/报告查看页面
+- HR 后台考试记录查看页
+- AI 评分功能
 
 ---
 
