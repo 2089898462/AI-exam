@@ -423,4 +423,29 @@
   - 答案切换不丢失（状态持久化验证通过）
   - 答题卡导航可点击切换题目
   - 完成按钮弹出未答题确认对话框
+
+### S3.2.3.1 - 答案保存接口开发
+- **确认后端答案保存接口已实现**：
+  - `POST /api/v1/exam-records/{record_id}/answers`：保存单题答案
+  - `POST /api/v1/exam-records/{record_id}/answers/batch`：批量保存答案
+- **Schema 验证** `schemas/exam_record.py`：
+  - AnswerCreate：question_id + answer_content
+  - AnswerBatchCreate：answers 列表
+  - AnswerResponse：完整响应结构
+- **Service 层验证** `services/answer_record_service.py`：
+  - save_answer()：幂等更新（同一题目只保留一条答案）
+  - save_answers_batch()：事务一致性
+  - 状态校验：只允许 not_started / in_progress 状态保存
+  - 题目归属校验：防止跨考试保存
+- **数据库验证**：
+  - answer_record 表结构完整
+  - 唯一约束 uq_answer_record_question 防止重复作答
+- **接口测试结果**（TestClient 全流程测试）：
+  - ✅ 单题保存成功（200）
+  - ✅ 批量保存成功（200，3 道题）
+  - ✅ 幂等更新成功（修改已有答案，不创建新记录）
+  - ✅ 无效题目 ID 返回 404
+  - ✅ 无效考试记录 ID 返回 404
+  - ✅ 错误请求被正确处理
+- **测试脚本**：`backend/test_answer_save_full.py`
   - 无控制台错误
