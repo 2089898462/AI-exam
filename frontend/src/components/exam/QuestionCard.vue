@@ -1,11 +1,12 @@
 <template>
-  <div class="question-card">
+  <div class="question-card" :class="{ 'question-card--disabled': disabled }">
     <div class="question-header">
       <span class="question-no">{{ questionNo }}</span>
       <el-tag :type="typeTagType" size="small" class="question-type">
         {{ typeLabel }}
       </el-tag>
       <span class="question-score">{{ question.score }} 分</span>
+      <el-tag v-if="disabled" type="info" size="small" class="readonly-tag">已提交</el-tag>
     </div>
     <div class="question-content">
       <span v-html="question.content"></span>
@@ -15,12 +16,14 @@
         v-if="isChoice"
         :question="question"
         :model-value="currentAnswer"
+        :disabled="disabled"
         @update:model-value="handleAnswer"
       />
       <TextQuestion
         v-else
         :question="question"
         :model-value="currentAnswer"
+        :disabled="disabled"
         @update:model-value="handleAnswer"
       />
     </div>
@@ -44,6 +47,10 @@ const props = defineProps({
   answer: {
     type: [String, Array],
     default: '',
+  },
+  disabled: {
+    type: Boolean,
+    default: false,
   },
 })
 
@@ -84,16 +91,35 @@ const currentAnswer = computed({
     return props.answer
   },
   set(val) {
-    emit('update:answer', val)
+    if (!props.disabled) {
+      emit('update:answer', val)
+    }
   },
 })
 
 function handleAnswer(val) {
-  emit('update:answer', val)
+  if (!props.disabled) {
+    emit('update:answer', val)
+  }
 }
 </script>
 
 <style scoped>
+.question-card--disabled {
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.question-card--disabled .question-body {
+  background: #f9f9f9;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.readonly-tag {
+  margin-left: auto;
+}
+
 .question-card {
   background: #fff;
   border-radius: 12px;

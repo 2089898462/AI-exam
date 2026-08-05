@@ -1,15 +1,65 @@
 <template>
   <div class="exam-page">
+    <!-- 加载中 -->
     <div v-if="loading" class="loading-state">
       <el-icon :size="48" class="is-loading"><Loading /></el-icon>
       <p>加载考试中...</p>
     </div>
 
+    <!-- 错误 -->
     <div v-else-if="error" class="error-state">
       <el-alert type="error" :closable="false">{{ error }}</el-alert>
       <el-button type="primary" @click="loadPaper">重试</el-button>
     </div>
 
+    <!-- 已提交结果页 -->
+    <div v-else-if="examStore.isSubmitted" class="result-page">
+      <div class="result-card">
+        <div class="result-header">
+          <el-icon :size="64" class="success-icon"><CircleCheckFilled /></el-icon>
+          <h2>考试已完成</h2>
+          <p class="result-subtitle">您的答案已提交，等待批改</p>
+        </div>
+        
+        <div class="result-stats">
+          <div class="stat-item">
+            <span class="stat-value">{{ examStore.answeredCount }}</span>
+            <span class="stat-label">已答题数</span>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat-item">
+            <span class="stat-value">{{ examStore.unansweredCount }}</span>
+            <span class="stat-label">未答题数</span>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat-item">
+            <span class="stat-value">{{ examStore.completionRate }}%</span>
+            <span class="stat-label">完成率</span>
+          </div>
+        </div>
+
+        <div class="result-info">
+          <div class="info-row">
+            <span class="info-label">候选人</span>
+            <span class="info-value">{{ examStore.candidateName }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">考试名称</span>
+            <span class="info-value">{{ examStore.examInfo?.title }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">提交时间</span>
+            <span class="info-value">{{ formatDateTime(submittedAt) }}</span>
+          </div>
+        </div>
+
+        <div class="result-actions">
+          <el-button type="primary" @click="goHome">返回首页</el-button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 答题页面 -->
     <template v-else>
       <header class="exam-header">
         <div class="header-left">
@@ -65,6 +115,14 @@
               {{ idx + 1 }}
             </button>
           </div>
+          <div class="nav-progress">
+            <el-progress
+              :percentage="examStore.completionRate"
+              :stroke-width="8"
+              :text-inside="true"
+            />
+            <span class="progress-label">完成率</span>
+          </div>
           <div class="nav-legend">
             <span class="legend-item">
               <span class="legend-dot answered"></span>已答
@@ -84,6 +142,7 @@
             :question="currentQuestion"
             :index="currentIndex"
             :answer="examStore.answers[currentQuestion.id]"
+            :disabled="!examStore.canEdit"
             @update:answer="handleAnswer"
           />
 
@@ -104,9 +163,10 @@
             <el-button
               v-else
               type="success"
-              @click="handleFinish"
+              :loading="submitting"
+              @click="handleSubmit"
             >
-              完成
+              {{ submitting ? '提交中...' : '提交考试' }}
             </el-button>
           </div>
         </main>
@@ -116,10 +176,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Loading, CircleCheck, Warning } from '@element-plus/icons-vue'
+import { Loading, CircleCheck, Warning, CircleCheckFilled } from '@element-plus/icons-vue'
 import { useExamStore } from '@/stores/exam'
 import { useAutoSave } from '@/hooks/useAutoSave'
 import QuestionCard from '@/components/exam/QuestionCard.vue'
@@ -132,6 +192,8 @@ const loading = ref(true)
 const error = ref('')
 const currentIndex = ref(0)
 const recordId = ref(null)
+const submitting = ref(false)
+const submittedAt = ref(null)
 
 const autoSave = useAutoSave(examStore)
 
@@ -149,21 +211,36 @@ onMounted(async () => {
   await loadPaper()
 })
 
+onBeforeUnmount(() => {
+  autoSave.cleanup()
+})
+
 async function loadPaper() {
   loading.value = true
   error.value = ''
   try {
-    // 1. 加载试卷（题目列表）
+    // 1. 加载试卷
     await examStore.loadExamPaper(recordId.value)
     
-    // 2. 加载历史答案（恢复进度）
+    // 2. 如果状态是 not_started，自动开始考试
+    if (examStore.status === 'not_started') {
+      await examStore.startExam()
+    }
+    
+    // 3. 如果已提交，直接显示结果
+    if (examStore.isSubmitted) {
+      submittedAt.value = examStore.examInfo?.submittedAt
+      loading.value = false
+      return
+    }
+    
+    // 4. 加载历史答案（恢复进度）
     try {
       const historyAnswers = await examStore.loadHistoryAnswers()
       if (historyAnswers && historyAnswers.length > 0) {
         ElMessage.info(`已恢复 ${historyAnswers.length} 道题的答案`)
       }
     } catch (err) {
-      // 历史答案加载失败不影响主流程
       console.warn('加载历史答案失败:', err)
     }
     
@@ -183,16 +260,24 @@ function isAnswered(questionId) {
 }
 
 function handleAnswer(questionId, value) {
+  if (!examStore.canEdit) return
   autoSave.saveCurrentAnswer(questionId, value)
 }
 
 async function goToQuestion(idx) {
-  // 切换题目前先保存当前答案
+  if (!examStore.canEdit) {
+    currentIndex.value = idx
+    return
+  }
   await autoSave.flushSave()
   currentIndex.value = idx
 }
 
 async function prevQuestion() {
+  if (!examStore.canEdit) {
+    if (currentIndex.value > 0) currentIndex.value--
+    return
+  }
   if (currentIndex.value > 0) {
     await autoSave.flushSave()
     currentIndex.value--
@@ -200,37 +285,80 @@ async function prevQuestion() {
 }
 
 async function nextQuestion() {
+  if (!examStore.canEdit) {
+    if (currentIndex.value < examStore.questions.length - 1) currentIndex.value++
+    return
+  }
   if (currentIndex.value < examStore.questions.length - 1) {
     await autoSave.flushSave()
     currentIndex.value++
   }
 }
 
-async function handleFinish() {
-  // 保存所有答案
-  await autoSave.saveAllAnswers()
-
-  const unanswered = examStore.questions.filter(
-    (q) => !isAnswered(q.id)
-  ).length
-
-  if (unanswered > 0) {
-    try {
-      await ElMessageBox.confirm(
-        `您还有 ${unanswered} 道题未作答，确定要完成吗？`,
-        '提示',
-        {
-          confirmButtonText: '确定完成',
-          cancelButtonText: '继续作答',
-          type: 'warning',
-        }
-      )
-    } catch {
+async function handleSubmit() {
+  if (submitting.value) return
+  
+  submitting.value = true
+  
+  try {
+    // 1. 先保存所有答案
+    const saved = await autoSave.saveAllAnswers()
+    if (!saved) {
+      ElMessage.error('答案保存失败，请检查网络后重试')
+      submitting.value = false
       return
     }
+    
+    // 2. 确认对话框
+    const unanswered = examStore.questions.filter(
+      (q) => !isAnswered(q.id)
+    ).length
+    
+    if (unanswered > 0) {
+      try {
+        await ElMessageBox.confirm(
+          `您还有 ${unanswered} 道题未作答，确定要提交吗？提交后将无法修改。`,
+          '提交确认',
+          {
+            confirmButtonText: '确定提交',
+            cancelButtonText: '继续作答',
+            type: 'warning',
+          }
+        )
+      } catch {
+        submitting.value = false
+        return
+      }
+    } else {
+      try {
+        await ElMessageBox.confirm(
+          '所有题目已作答，确定要提交吗？提交后将无法修改。',
+          '提交确认',
+          {
+            confirmButtonText: '确定提交',
+            cancelButtonText: '继续作答',
+            type: 'success',
+          }
+        )
+      } catch {
+        submitting.value = false
+        return
+      }
+    }
+    
+    // 3. 提交考试
+    const result = await examStore.submitExam()
+    submittedAt.value = result.submitted_at
+    
+    // 4. 跳转到结果页（由 isSubmitted getter 自动切换视图）
+    ElMessage.success('考试提交成功！')
+    
+  } catch (err) {
+    console.error('提交考试失败:', err)
+    ElMessage.error(err.message || '提交失败，请重试')
+  } finally {
+    submitting.value = false
   }
-
-  ElMessage.success('考试完成！')
 }
 
 async function handleRetry() {
@@ -240,6 +368,10 @@ async function handleRetry() {
   } else {
     ElMessage.error('保存失败，请检查网络连接')
   }
+}
+
+function goHome() {
+  router.push('/')
 }
 
 function formatTime(date) {
@@ -255,6 +387,17 @@ function formatTime(date) {
   const h = String(d.getHours()).padStart(2, '0')
   const m = String(d.getMinutes()).padStart(2, '0')
   return `${h}:${m}`
+}
+
+function formatDateTime(date) {
+  if (!date) return ''
+  const d = new Date(date)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  const h = String(d.getHours()).padStart(2, '0')
+  const min = String(d.getMinutes()).padStart(2, '0')
+  return `${y}-${m}-${day} ${h}:${min}`
 }
 </script>
 
@@ -275,6 +418,114 @@ function formatTime(date) {
   color: #606266;
 }
 
+/* 结果页样式 */
+.result-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.result-card {
+  width: 100%;
+  max-width: 480px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 40px 32px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  text-align: center;
+}
+
+.result-header {
+  margin-bottom: 32px;
+}
+
+.success-icon {
+  color: #67c23a;
+  margin-bottom: 16px;
+}
+
+.result-header h2 {
+  font-size: 24px;
+  font-weight: 600;
+  color: #303133;
+  margin: 0 0 8px 0;
+}
+
+.result-subtitle {
+  color: #909399;
+  margin: 0;
+}
+
+.result-stats {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  margin-bottom: 32px;
+  padding: 24px;
+  background: #f5f7fa;
+  border-radius: 12px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #303133;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: #909399;
+}
+
+.stat-divider {
+  width: 1px;
+  height: 40px;
+  background: #e4e7ed;
+}
+
+.result-info {
+  text-align: left;
+  margin-bottom: 32px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+.info-label {
+  color: #909399;
+  font-size: 14px;
+}
+
+.info-value {
+  color: #303133;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.result-actions {
+  display: flex;
+  justify-content: center;
+}
+
+/* 答题页样式 */
 .exam-header {
   background: #fff;
   padding: 16px 32px;
@@ -418,6 +669,18 @@ function formatTime(date) {
   background: #e1f3d8;
   border-color: #e1f3d8;
   color: #67c23a;
+}
+
+.nav-progress {
+  margin-bottom: 16px;
+}
+
+.progress-label {
+  display: block;
+  text-align: center;
+  font-size: 12px;
+  color: #909399;
+  margin-top: 4px;
 }
 
 .nav-legend {

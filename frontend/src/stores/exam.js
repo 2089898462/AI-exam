@@ -25,14 +25,27 @@ export const useExamStore = defineStore('exam', {
     isStarted() {
       return this.status === 'in_progress'
     },
+    isSubmitted() {
+      return this.status === 'submitted'
+    },
+    canEdit() {
+      return this.status === 'in_progress'
+    },
     answeredCount() {
       return Object.values(this.answers).filter(
         (v) => v !== null && v !== undefined && v !== '' &&
                !(Array.isArray(v) && v.length === 0)
       ).length
     },
+    unansweredCount() {
+      return this.questions.length - this.answeredCount
+    },
     totalQuestions() {
       return this.questions.length
+    },
+    completionRate() {
+      if (this.questions.length === 0) return 0
+      return Math.round((this.answeredCount / this.questions.length) * 100)
     },
     hasUnsavedChanges() {
       return this.isDirty && !this.isSaving

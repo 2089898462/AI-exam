@@ -79,11 +79,21 @@ class ExamRecordService(BaseService[ExamRecord]):
 
         状态流转：in_progress → submitted
         记录 submitted_at 时间戳
+        支持幂等提交：已提交则直接返回当前状态
         """
         record = self.get_record_by_id(record_id)
-        if record.status != "in_progress":
-            raise BusinessException(f"考试记录状态为 {record.status}，无法提交")
-
+        
+        # 幂等：已提交直接返回
+        if record.status == "submitted":
+            return record
+        
+        if record.status == "not_started":
+            raise BusinessException("考试尚未开始，无法提交")
+        
+        if record.status == "graded":
+            return record  # 已批改直接返回
+        
+        # in_progress 状态正常提交
         record.status = "submitted"
         record.submitted_at = datetime.now()
         self.db.commit()

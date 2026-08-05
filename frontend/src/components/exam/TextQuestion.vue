@@ -1,10 +1,11 @@
 <template>
-  <div class="text-question">
+  <div class="text-question" :class="{ 'text-question--disabled': disabled }">
     <el-input
       v-model="innerValue"
       type="textarea"
       :rows="5"
       :maxlength="2000"
+      :disabled="disabled"
       placeholder="请输入您的答案..."
       show-word-limit
       resize="vertical"
@@ -25,6 +26,10 @@ const props = defineProps({
     type: [String, Number],
     default: '',
   },
+  disabled: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -39,7 +44,9 @@ watch(
 )
 
 function handleInput() {
-  emit('update:modelValue', innerValue.value)
+  if (!props.disabled) {
+    emit('update:modelValue', innerValue.value)
+  }
 }
 </script>
 

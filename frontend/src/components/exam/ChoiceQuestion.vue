@@ -1,14 +1,16 @@
 <template>
-  <div class="choice-question">
+  <div class="choice-question" :class="{ 'choice-question--disabled': disabled }">
     <el-radio-group
       v-if="question.type === 'single_choice' || question.type === 'true_false'"
       v-model="innerValue"
+      :disabled="disabled"
       @change="handleChange"
     >
       <el-radio
         v-for="(option, idx) in parsedOptions"
         :key="idx"
         :value="getOptionValue(option)"
+        :disabled="disabled"
         class="choice-option"
       >
         <span class="option-label">{{ getOptionLabel(option) }}</span>
@@ -21,12 +23,14 @@
     <el-checkbox-group
       v-else-if="question.type === 'multiple_choice'"
       v-model="innerValue"
+      :disabled="disabled"
       @change="handleChange"
     >
       <el-checkbox
         v-for="(option, idx) in parsedOptions"
         :key="idx"
         :value="getOptionValue(option)"
+        :disabled="disabled"
         class="choice-option"
       >
         <span class="option-label">{{ getOptionLabel(option) }}</span>
@@ -49,6 +53,10 @@ const props = defineProps({
   modelValue: {
     type: [String, Array],
     default: '',
+  },
+  disabled: {
+    type: Boolean,
+    default: false,
   },
 })
 

@@ -513,3 +513,35 @@
   - ✅ 多选格式转换：后端 "A,C" 正确转为前端数组 ["A", "C"]
   - ✅ 恢复提示：显示"已恢复 X 道题的答案"
   - ✅ 异常处理：历史答案加载失败不阻断主流程
+
+### S3.2.3.4 - 提交考试流程开发
+- **后端 Service 层** `exam_record_service.py`：
+  - `submit_exam()` 增加幂等提交支持：已提交/已批改直接返回当前状态
+  - `not_started` 状态禁止提交，返回业务异常
+  - 状态流转：not_started → in_progress → submitted
+  - 自动记录 submitted_at 时间戳
+- **后端 API 端点** `POST /api/v1/exam-records/{record_id}/submit`：
+  - 已存在端点，完善文档
+  - 候选人端点无需认证
+- **前端 Pinia Store** `stores/exam.js`：
+  - 新增 getters：isSubmitted / canEdit / unansweredCount / completionRate
+  - 用于结果页统计和编辑权限控制
+- **前端答题页面** `views/exam/Exam.vue`：
+  - 自动启动考试：加载试卷时检测到 not_started 状态自动调用 startExam
+  - 提交确认弹窗：未答题/已答题两种不同提示
+  - 提交按钮加载状态：submitting 状态显示"提交中..."
+  - 结果页面：显示考试已完成、统计信息、候选人信息、提交时间
+  - 返回首页按钮
+  - 提交后状态：isSubmitted → 自动切换到结果页面
+- **前端组件 disabled 支持**：
+  - `QuestionCard.vue`：新增 disabled prop，提交后显示"已提交"标签
+  - `ChoiceQuestion.vue`：新增 disabled prop，禁用 radio/checkbox
+  - `TextQuestion.vue`：新增 disabled prop，禁用 textarea
+  - 提交后所有答案不可修改
+- **浏览器测试结果**：
+  - ✅ 正常提交：保存答案 → 确认 → 提交成功 → 结果页
+  - ✅ 重复提交：幂等处理，返回已提交状态
+  - ✅ 提交后刷新：仍然显示结果页面
+  - ✅ 提交后禁止编辑：选项/输入框禁用
+  - ✅ 自动开始考试：not_started 状态加载时自动调用 startExam
+  - ✅ 未答题提示：提交前显示未答题数量确认

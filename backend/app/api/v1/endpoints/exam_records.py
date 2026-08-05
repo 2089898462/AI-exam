@@ -177,7 +177,14 @@ async def submit_exam(
     record_id: int,
     db: Session = Depends(get_db),
 ):
-    """提交考试（状态：in_progress → submitted）"""
+    """提交考试（状态：in_progress → submitted）
+    
+    提交流程：
+    1. 幂等检查：已提交直接返回当前状态
+    2. 状态校验：not_started 禁止提交
+    3. 更新状态为 submitted
+    4. 记录提交时间
+    """
     service = ExamRecordService(db)
     record = service.submit_exam(record_id)
     return ApiResponse.success(
