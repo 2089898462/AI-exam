@@ -1,1 +1,5 @@
 export { examApi, questionApi } from './exam'
+export { examRecordApi } from './examRecord'
+export { gradingResultApi } from './gradingResult'
+export { templateApi } from './template'
+export { participantApi } from './participant'

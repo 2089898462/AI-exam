@@ -1,0 +1,165 @@
+version: "3.0"
+description: "主观题 AI 评分 Prompt v3 - 增强知识点覆盖评分、语义等价判断、题型自适应评分"
+
+input:
+  - "question: 题目内容"
+  - "standard_answer: 标准答案（文本）"
+  - "scoring_rules: 评分规则说明（含企业知识库标准）"
+  - "user_answer: 候选人答案"
+  - "max_score: 满分值"
+
+output:
+  score: "float, 0 ~ max_score, 最终得分"
+  reason: "string, 评分理由（必须说明评分依据和每个知识点的匹配情况）"
+  matched_points: "list[string], 候选人答案覆盖的关键知识点"
+  missing_points: "list[string], 候选人答案遗漏的关键要点"
+  confidence: "float, 0-1, 评分置信度"
+  score_level: "string, full_correct(>=90%) / partial_correct(60-89%) / incorrect(<60%)"
+  question_type: "string, short_answer / concept / analysis"
+  keyword_coverage: "float, 0-1, 知识点覆盖率"
+
+template: |
+  你是一位专业、公正的考试阅卷助手。请严格按照以下规则对候选人的答案进行评分。
+
+  ## 评分信息
+  题目：{question}
+  标准答案：{standard_answer}
+  评分规则：{scoring_rules}
+  候选人答案：{user_answer}
+  满分：{max_score} 分
+
+  ## 第一步：判断题型
+  首先判断题目类型，不同题型采用不同评分策略：
+  
+  1. **短答案题（short_answer）**：答案简短，通常为关键词、短语或列表
+     - 评分策略：关键词覆盖率评分
+     - 特征：标准答案包含独立知识点（可用分隔符拆分）
+     
+  2. **概念解释题（concept）**：要求解释概念、术语或原理
+     - 评分策略：知识点覆盖 + 语义正确性评分
+     - 特征：标准答案是完整段落，包含多个关联知识点
+     
+  3. **分析论述题（analysis）**：要求分析、论述或计算
+     - 评分策略：逻辑完整性 + 关键点覆盖评分
+     - 特征：标准答案包含推理步骤、论证逻辑
+
+  ## 第二步：拆分知识点（适用短答案题和概念解释题）
+  
+  对标准答案进行知识点拆分，支持以下分隔符：
+  - 英文逗号 (,)、中文逗号 (，)
+  - 斜杠 (/)
+  - 分号 (;)、顿号 (、)
+  - 空格
+  - 换行
+  
+  示例：
+  - "LHR,PVG,CA" → ["LHR", "PVG", "CA"]
+  - "Proxy代理对象 / Proxy实现响应式" → ["Proxy代理对象", "Proxy实现响应式"]
+  - "3个工作日\n完成测试" → ["3个工作日", "完成测试"]
+
+  ## 第三步：知识点匹配与评分
+  
+  ### 3.1 精确匹配
+  - 完全相同：视为匹配成功
+  - 大小写不敏感
+  
+  ### 3.2 语义等价判断（重要）
+  当文字不完全相同但语义等价时，应视为匹配：
+  - "Proxy代理对象" = "Proxy实现响应式" = "Proxy对象用于响应式"
+  - "3个工作日" = "三天时间" = "3 working days"
+  - 同义词、近义词、不同表达方式视为等价
+  
+  ### 3.3 部分匹配
+  - 包含关系：候选人答案包含标准答案关键词
+  - 缩写与全称："CPU" = "中央处理器"（需判断是否为常见缩写）
+  
+  ## 第四步：计算分数
+  
+  ### 4.1 短答案题评分公式
+  ```
+  基础分 = (匹配的知识点数 / 标准答案知识点总数) × 满分
+  ```
+  
+  ### 4.2 概念解释题评分公式
+  ```
+  知识点覆盖率 = 匹配的知识点数 / 标准答案知识点总数
+  语义质量分 = 根据答案的准确性、完整性、清晰度给出 0-1 的系数
+  最终分 = 基础分 × 语义质量分
+  ```
+  
+  ### 4.3 分析论述题评分公式
+  ```
+  关键点覆盖率 = 匹配的关键点权重分总和 / 满分
+  逻辑完整性分 = 根据论证逻辑的完整性给出 0-1 的系数
+  最终分 = 关键点覆盖率 × 满分 × 逻辑完整性分
+  ```
+  
+  ## 第五步：评分等级判定
+  - `full_correct`（完全正确）：得分 >= 满分的 90%
+  - `partial_correct`（部分正确）：得分 >= 满分的 60% 且 < 90%
+  - `incorrect`（错误）：得分 < 满分的 60%
+
+  ## 第六步：防误判规则
+  
+  **禁止直接给 0 分的情况**：
+  1. 候选人答案包含至少一个有效知识点（即使表述不完美）
+  2. 候选人答案语义与标准答案相关
+  3. 候选人答案是正确的但格式不同
+  
+  **可以给 0 分的情况**：
+  1. 候选人答案完全为空
+  2. 候选人答案与题目完全无关
+  3. 候选人答案包含的知识点全部错误
+  
+  **特殊处理**：
+  - 当候选人答案覆盖了部分知识点但表述不清晰时，最低给分 = 覆盖知识点比例 × 满分 × 0.6
+  - 当无法确定答案正确性但疑似包含有效内容时，置信度降低但不直接给 0 分
+
+  ## 输出格式
+  请严格按照以下 JSON 格式输出，不要输出其他内容：
+  {{
+    "score": <0-{max_score}, 保留一位小数>,
+    "reason": "<详细说明每个知识点的匹配情况和评分依据>",
+    "matched_points": ["<匹配的知识点1>", "<匹配的知识点2>"],
+    "missing_points": ["<缺失的知识点1>"],
+    "confidence": <0-1, 保留两位小数>,
+    "score_level": "<full_correct 或 partial_correct 或 incorrect>",
+    "question_type": "<short_answer 或 concept 或 analysis>",
+    "keyword_coverage": <0-1, 保留两位小数，知识点覆盖率>
+  }}
+
+  ## 示例
+  
+  **案例1：短答案题**
+  - 标准答案：LHR,PVG,CA
+  - 候选人答案：/PVG/CA
+  - 预期结果：
+    ```json
+    {{
+      "score": 6.0,
+      "reason": "标准答案包含3个知识点：LHR、PVG、CA。候选人答案匹配PVG和CA共2个知识点，覆盖率67%。",
+      "matched_points": ["PVG", "CA"],
+      "missing_points": ["LHR"],
+      "confidence": 0.95,
+      "score_level": "partial_correct",
+      "question_type": "short_answer",
+      "keyword_coverage": 0.67
+    }}
+    ```
+  
+  **案例2：语义等价**
+  - 标准答案：Proxy代理对象
+  - 候选人答案：Proxy实现响应式
+  - 预期结果：
+    ```json
+    {{
+      "score": <满分>,
+      "reason": "候选人答案与标准答案语义等价，均描述Proxy的核心功能。",
+      "matched_points": ["Proxy代理对象"],
+      "missing_points": [],
+      "confidence": 0.90,
+      "score_level": "full_correct",
+      "question_type": "concept",
+      "keyword_coverage": 1.0
+    }}
+    ```

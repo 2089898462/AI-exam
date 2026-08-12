@@ -1,0 +1,157 @@
+{
+  "environment": {
+    "backend": true,
+    "ai_service": true,
+    "frontend": true
+  },
+  "admin_tests": [
+    {
+      "id": "1.1.1",
+      "name": "管理员登录",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "1.1.2",
+      "name": "获取用户信息",
+      "status": "PASS",
+      "detail": "角色: admin"
+    },
+    {
+      "id": "1.2.1",
+      "name": "管理员访问考试列表",
+      "status": "PASS",
+      "detail": "HR页面可访问"
+    }
+  ],
+  "hr_tests": [
+    {
+      "id": "2.1.1",
+      "name": "HR登录",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "2.2.1",
+      "name": "创建考试",
+      "status": "PASS",
+      "detail": "ID: 9"
+    },
+    {
+      "id": "2.2.2",
+      "name": "考试码自动生成",
+      "status": "PASS",
+      "detail": "Code: EXAM-20260807105149-BFE5BCF8"
+    },
+    {
+      "id": "2.3.1",
+      "name": "添加单选题",
+      "status": "PASS",
+      "detail": "ID: 16"
+    },
+    {
+      "id": "2.3.2",
+      "name": "添加判断题",
+      "status": "PASS",
+      "detail": "ID: 17"
+    },
+    {
+      "id": "2.3.3",
+      "name": "添加简答题",
+      "status": "PASS",
+      "detail": "ID: 18"
+    },
+    {
+      "id": "2.4.1",
+      "name": "发布考试",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "2.5.1",
+      "name": "添加参与人员",
+      "status": "PASS",
+      "detail": ""
+    }
+  ],
+  "candidate_tests": [
+    {
+      "id": "3.1.1",
+      "name": "候选人进入考试",
+      "status": "PASS",
+      "detail": "Record ID: 7"
+    },
+    {
+      "id": "3.2.1",
+      "name": "开始考试",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "3.2.2",
+      "name": "批量保存答案",
+      "status": "PASS",
+      "detail": "3 题"
+    },
+    {
+      "id": "3.3.1",
+      "name": "提交考试",
+      "status": "PASS",
+      "detail": "状态: submitted"
+    },
+    {
+      "id": "3.3.2",
+      "name": "提交状态验证",
+      "status": "PASS",
+      "detail": "submitted"
+    }
+  ],
+  "ai_scoring_tests": [
+    {
+      "id": "4.1.1",
+      "name": "AI评分完成",
+      "status": "PASS",
+      "detail": "等待 30s, 状态: completed"
+    },
+    {
+      "id": "4.2.1",
+      "name": "总分数",
+      "status": "PASS",
+      "detail": "total_score: 15.0"
+    },
+    {
+      "id": "4.3.1",
+      "name": "HR 查看考试详情",
+      "status": "PASS",
+      "detail": "状态: graded"
+    }
+  ],
+  "exception_tests": [
+    {
+      "id": "5.1.1",
+      "name": "错误考试码被拒绝",
+      "status": "PASS",
+      "detail": "HTTP 400"
+    },
+    {
+      "id": "5.2.1",
+      "name": "重复参加被拦截",
+      "status": "PASS",
+      "detail": "HTTP 400"
+    },
+    {
+      "id": "5.4.1",
+      "name": "AI 服务正常运行",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "5.4.2",
+      "name": "考试数据完整性",
+      "status": "PASS",
+      "detail": "数据可查询"
+    }
+  ],
+  "bugs": [],
+  "passed": true
+}

@@ -78,7 +78,11 @@ watch(
 
 function getOptionValue(option) {
   if (typeof option === 'object' && option !== null) {
-    return option.key !== undefined ? String(option.key) : String(option.value || option.id || '')
+    if (option.key !== undefined) return String(option.key)
+    if (option.value !== undefined) return String(option.value)
+    if (option.label !== undefined) return String(option.label)
+    if (option.id !== undefined) return String(option.id)
+    return ''
   }
   return String(option)
 }

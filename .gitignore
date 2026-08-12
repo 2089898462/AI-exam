@@ -48,3 +48,9 @@ build/
 .coverage
 htmlcov/
 coverage.xml
+
+# Temp
+temp/
+tmp/
+*.tmp
+temp_*

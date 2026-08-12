@@ -2,10 +2,11 @@
 考试记录 API Schema
 候选人考试流程的请求/响应数据模型
 """
+import re
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
-from pydantic import Field
+from pydantic import Field, field_validator, model_validator
 
 from app.schemas.common import BaseSchema
 
@@ -14,14 +15,32 @@ from app.schemas.common import BaseSchema
 # 答题记录
 # ============================================================
 class AnswerCreate(BaseSchema):
-    """单题答题请求"""
+    """单题答题请求
+
+    兼容两种前端字段命名：
+    - answer_content: 标准字段名（推荐）
+    - answer: 旧版字段名（兼容）
+    """
     question_id: int = Field(..., description="题目 ID")
-    answer_content: Optional[str] = Field(default=None, description="答案内容")
+    answer_content: Optional[str] = Field(
+        default=None, max_length=10000, description="答案内容"
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_answer(cls, data: Any) -> Any:
+        """兼容 answer → answer_content 字段映射"""
+        if isinstance(data, dict):
+            if "answer_content" not in data and "answer" in data:
+                data["answer_content"] = data["answer"]
+        return data
 
 
 class AnswerBatchCreate(BaseSchema):
     """批量答题请求"""
-    answers: list[AnswerCreate] = Field(..., min_length=1, description="答案列表")
+    answers: list[AnswerCreate] = Field(
+        ..., min_length=1, max_length=200, description="答案列表"
+    )
 
 
 class AnswerResponse(BaseSchema):
@@ -41,9 +60,38 @@ class AnswerResponse(BaseSchema):
 class ExamRecordCreate(BaseSchema):
     """创建考试记录（候选人进入考试）"""
     exam_id: int = Field(..., description="考试 ID")
-    candidate_name: str = Field(..., min_length=1, max_length=64, description="候选人姓名")
+    exam_code: Optional[str] = Field(default=None, description="考试访问凭证")
+    candidate_name: str = Field(
+        ..., min_length=1, max_length=64, description="候选人姓名"
+    )
     candidate_phone: Optional[str] = Field(default=None, description="候选人手机")
     candidate_email: Optional[str] = Field(default=None, description="候选人邮箱")
+
+    @field_validator("candidate_name")
+    @classmethod
+    def validate_candidate_name(cls, v: str) -> str:
+        cleaned = v.strip()[:64]
+        return cleaned
+
+    @field_validator("candidate_phone")
+    @classmethod
+    def validate_candidate_phone(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        cleaned = re.sub(r"[\s\-\(\)]", "", v)
+        if not re.match(r"^1[3-9]\d{9}$", cleaned):
+            raise ValueError("手机号格式不正确")
+        return cleaned
+
+    @field_validator("candidate_email")
+    @classmethod
+    def validate_candidate_email(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        pattern = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
+        if not re.match(pattern, v):
+            raise ValueError("邮箱格式不正确")
+        return v
 
 
 class ExamRecordResponse(BaseSchema):

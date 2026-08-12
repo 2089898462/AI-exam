@@ -55,6 +55,15 @@
           label-position="top"
           class="entry-form"
         >
+          <el-form-item label="考试凭证" prop="exam_code">
+            <el-input
+              v-model="formData.exam_code"
+              placeholder="请输入考试访问码"
+              size="large"
+              maxlength="50"
+            />
+          </el-form-item>
+
           <el-form-item label="候选人姓名" prop="candidate_name">
             <el-input
               v-model="formData.candidate_name"
@@ -67,7 +76,7 @@
           <el-form-item label="联系手机" prop="candidate_phone">
             <el-input
               v-model="formData.candidate_phone"
-              placeholder="请输入手机号码（选填）"
+              placeholder="请输入手机号码（用于身份验证）"
               size="large"
               maxlength="20"
             />
@@ -118,12 +127,17 @@ const examDescription = ref('')
 const examInfo = ref(null)
 
 const formData = reactive({
+  exam_code: '',
   candidate_name: '',
   candidate_phone: '',
   candidate_email: '',
 })
 
 const rules = {
+  exam_code: [
+    { required: true, message: '请输入考试凭证', trigger: 'blur' },
+    { min: 1, max: 50, message: '凭证长度 1-50 个字符', trigger: 'blur' },
+  ],
   candidate_name: [
     { required: true, message: '请输入候选人姓名', trigger: 'blur' },
     { min: 1, max: 64, message: '姓名长度 1-64 个字符', trigger: 'blur' },
@@ -172,14 +186,16 @@ async function handleStart() {
   try {
     await examStore.createRecord({
       exam_id: examId.value,
+      exam_code: formData.exam_code,
       candidate_name: formData.candidate_name,
       candidate_phone: formData.candidate_phone || null,
       candidate_email: formData.candidate_email || null,
     })
-    ElMessage.success('考试记录创建成功')
+    ElMessage.success('身份验证成功，正在进入考试...')
     isSubmitted.value = true
   } catch (err) {
     console.error('创建考试记录失败:', err)
+    // 错误信息已通过 Axios 拦截器显示给用户
   } finally {
     loading.value = false
   }

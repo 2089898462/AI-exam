@@ -48,14 +48,19 @@
         </el-descriptions-item>
       </el-descriptions>
 
-      <el-divider content-position="left">题目列表</el-divider>
-
-      <QuestionTable
-        :exam-id="exam.id"
-        :questions="exam.questions || []"
-        :readonly="exam.status !== 'draft'"
-        @delete="handleQuestionDelete"
-      />
+      <el-tabs v-model="activeTab" style="margin-top: 16px">
+        <el-tab-pane label="题目列表" name="questions">
+          <QuestionTable
+            :exam-id="exam.id"
+            :questions="exam.questions || []"
+            :readonly="exam.status !== 'draft'"
+            @delete="handleQuestionDelete"
+          />
+        </el-tab-pane>
+        <el-tab-pane label="参与人员" name="participants">
+          <ExamParticipants :exam-id="exam.id" />
+        </el-tab-pane>
+      </el-tabs>
     </el-card>
 
     <ImportExamDialog
@@ -74,12 +79,14 @@ import { ArrowLeft, Upload } from '@element-plus/icons-vue'
 import { examApi } from '@/api'
 import ImportExamDialog from '@/components/exam/ImportExamDialog.vue'
 import QuestionTable from '@/components/exam/QuestionTable.vue'
+import ExamParticipants from './ExamParticipants.vue'
 
 const router = useRouter()
 const route = useRoute()
 const loading = ref(false)
 const exam = ref({})
 const showImportDialog = ref(false)
+const activeTab = ref('questions')
 
 const statusText = (s) => ({ draft: '草稿', published: '已发布', closed: '已关闭' }[s] || s)
 const statusTagType = (s) => ({ draft: 'info', published: 'success', closed: 'danger' }[s] || 'info')

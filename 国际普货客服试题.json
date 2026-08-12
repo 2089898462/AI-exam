@@ -1,0 +1,146 @@
+{
+  "title": "国际普货客服试题",
+  "position": "普货客服",
+  "duration_minutes": 60,
+  "pass_score": 60,
+  "questions": [
+    {
+      "type": "single_choice",
+      "content": "运输条款EXW项下，始发港杂费由发货人承担。",
+      "options": [
+        {
+          "label": "A",
+          "text": "对"
+        },
+        {
+          "label": "B",
+          "text": "错"
+        }
+      ],
+      "answer": "B",
+      "score": 3,
+      "question_no": 1,
+      "sort_order": 1
+    },
+    {
+      "type": "single_choice",
+      "content": "运输条款DAP项下，发货人需要负担目的港送货费用。",
+      "options": [
+        {
+          "label": "A",
+          "text": "对"
+        },
+        {
+          "label": "B",
+          "text": "错"
+        }
+      ],
+      "answer": "A",
+      "score": 3,
+      "question_no": 2,
+      "sort_order": 2
+    },
+    {
+      "type": "single_choice",
+      "content": "德国法兰克福机场的三字代码是LGG。",
+      "options": [
+        {
+          "label": "A",
+          "text": "对"
+        },
+        {
+          "label": "B",
+          "text": "错"
+        }
+      ],
+      "answer": "B",
+      "score": 3,
+      "question_no": 3,
+      "sort_order": 3
+    },
+    {
+      "type": "single_choice",
+      "content": "国际空运的运费是依据货物的实际毛重计费的。",
+      "options": [
+        {
+          "label": "A",
+          "text": "对"
+        },
+        {
+          "label": "B",
+          "text": "错"
+        }
+      ],
+      "answer": "B",
+      "score": 3,
+      "question_no": 4,
+      "sort_order": 4
+    },
+    {
+      "type": "single_choice",
+      "content": "国际空运操作中，危险品可随意运输，无需提供MSDS。",
+      "options": [
+        {
+          "label": "A",
+          "text": "对"
+        },
+        {
+          "label": "B",
+          "text": "错"
+        }
+      ],
+      "answer": "B",
+      "score": 3,
+      "question_no": 5,
+      "sort_order": 5
+    },
+    {
+      "type": "short_answer",
+      "content": "一般贸易项下，进口申报必须的清关文件包括（                ），（             ），合同或订单，报关委托书，（                 )。",
+      "answer": "发票,箱单,申报要素",
+      "score": 9,
+      "question_no": 6,
+      "sort_order": 6
+    },
+    {
+      "type": "short_answer",
+      "content": "运输条款CIF项下，主运费由（             ）承担，由（                ）负担货物的运输保险， 目的港杂费由（              ）承担。",
+      "answer": "发货方（卖方）,发货方（卖方）,收货方（买方）",
+      "score": 9,
+      "question_no": 7,
+      "sort_order": 7
+    },
+    {
+      "type": "short_answer",
+      "content": "有一批货运普货从英国伦敦希思罗机场经由中国国际航空公司承运发往中国上海浦东机场，请分别告知始发港机场三字代码（           ），目的港机场三字代码（          ），航空公司二字代码（              ）",
+      "answer": "LHR,PVG,CA",
+      "score": 9,
+      "question_no": 8,
+      "sort_order": 8
+    },
+    {
+      "type": "short_answer",
+      "content": "国际空运普货的英文表述是 （                        )。",
+      "answer": "GERERAL CARGO(大小写均可）",
+      "score": 3,
+      "question_no": 9,
+      "sort_order": 9
+    },
+    {
+      "type": "short_answer",
+      "content": "请将以下邮件内容翻译为中文：\nThe situation is now getting even worse, we have to consider the possibility of further delay which may be from customs inspection. Normally, customs entry needs to be done within 24 hours after cargo arrival, while looking at ours, the shipment has been pending for clearance documentation in the past four week. So there's of big chance that customs may impose inspection. The deadline given is to deliver on/before June/1st, we'll definitely miss the target given if we are not able to finish the procedure within the week.",
+      "answer": "现在的情况变得愈发糟糕，我们不得不考虑海关查验可能会引起的进一步延误。通常，清关需要在货物抵港后24小时内完成，但是看看我们的货物，在过去的四周一直在等待清关文件，所以有很大可能海关会要求查验货物。给予送货的最后时间是不晚于6月1日，如果本周我们仍然无法完成手续，我们肯定会错过要求的时间。",
+      "score": 25,
+      "question_no": 10,
+      "sort_order": 10
+    },
+    {
+      "type": "short_answer",
+      "content": "请根据以下数据撰写一份邮件给卡车公司安排运输：\nPick up address: ABC street\nDeliver to DEF warehouse\nLoading ref# 123\nUnloading ref# 456\nMAWB# 123-45678901\nHAWB# SH1234\nCK216/5\n3 PALLETS\n120*100150CM / 3\nCARGO READY ON May/1st",
+      "answer": "Dear xxx\nPlease help to arrange the road transportation. You can refer to the details given below.\nLoading ref# 123\nUnloading ref# 456\nMAWB# 123-45678901\nHAWB# SH1234\n3 PALLETS\n120*100150CM / 3\nPick up address: ABC street\nDeliver to DEF warehouse",
+      "score": 30,
+      "question_no": 11,
+      "sort_order": 11
+    }
+  ]
+}

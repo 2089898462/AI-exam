@@ -13,14 +13,32 @@ class OptionImportSchema(BaseModel):
 
 
 class QuestionImportSchema(BaseModel):
-    type: str = Field(..., pattern="^(single_choice|multiple_choice|essay)$", description="题型")
+    type: str = Field(..., pattern="^(single_choice|multiple_choice|essay|short_answer)$", description="题型")
     content: str = Field(..., min_length=1, max_length=5000, description="题目内容")
-    question_no: Optional[str] = Field(None, max_length=20, description="题目编号")
+    question_no: Optional[int | str] = Field(None, description="题目编号")
     category: Optional[str] = Field(None, max_length=50, description="题目分类")
     options: Optional[list[OptionImportSchema]] = Field(None, description="选项列表（选择题必填）")
     answer: str = Field(..., min_length=1, max_length=2000, description="标准答案")
     score: float = Field(default=0, ge=0, description="分值")
     sort_order: int = Field(default=0, ge=0, description="排序序号")
+
+    @field_validator("question_no")
+    @classmethod
+    def normalize_question_no(cls, v: int | str | None) -> str | None:
+        """将数字类型的 question_no 转换为字符串"""
+        if v is None:
+            return None
+        s = str(v)
+        if len(s) > 20:
+            raise ValueError("题目编号长度不能超过 20 个字符")
+        return s
+
+    @field_validator("type")
+    @classmethod
+    def normalize_type(cls, v: str) -> str:
+        """统一题型命名"""
+        type_map = {"short_answer": "essay", "essay": "essay"}
+        return type_map.get(v, v)
 
     @field_validator("options")
     @classmethod

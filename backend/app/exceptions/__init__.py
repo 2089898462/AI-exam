@@ -28,7 +28,8 @@ class NotFoundException(AppException):
 class BusinessException(AppException):
     """业务逻辑异常 (400)"""
 
-    def __init__(self, message: str = "业务异常", data: Any = None):
+    def __init__(self, message: str = "业务异常", data: Any = None, error_code: str = ""):
+        self.error_code = error_code
         super().__init__(code=400, message=message, data=data)
 
 

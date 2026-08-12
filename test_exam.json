@@ -1,0 +1,28 @@
+﻿{
+  "title": "Python开发工程师笔试",
+  "position": "Python开发工程师",
+  "duration_minutes": 60,
+  "pass_score": 60,
+  "questions": [
+    {
+      "type": "short_answer",
+      "content": "请简述 Python 中装饰器的作用和实现方式",
+      "answer": "装饰器用于在不修改原函数代码的情况下扩展函数功能，通过接受函数作为参数并返回新函数实现",
+      "score": 20,
+      "question_no": "1"
+    },
+    {
+      "type": "single_choice",
+      "content": "Python 中哪个关键字用于定义函数？",
+      "options": [
+        {"label": "A", "text": "function"},
+        {"label": "B", "text": "def"},
+        {"label": "C", "text": "func"},
+        {"label": "D", "text": "define"}
+      ],
+      "answer": "B",
+      "score": 10,
+      "question_no": "2"
+    }
+  ]
+}

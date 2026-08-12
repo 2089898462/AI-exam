@@ -46,6 +46,12 @@ class Exam(Base):
     exam_records = relationship(
         "ExamRecord", back_populates="exam", cascade="all, delete-orphan"
     )
+    score_rules = relationship(
+        "QuestionScoreRule", back_populates="exam", cascade="all, delete-orphan"
+    )
+    participants = relationship(
+        "ExamParticipant", back_populates="exam", cascade="all, delete-orphan"
+    )
 
     def __repr__(self):
         return f"<Exam(id={self.id}, title={self.title}, status={self.status})>"

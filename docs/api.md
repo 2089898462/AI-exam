@@ -57,7 +57,9 @@
 | POST | `/exam-records/{id}/start` | ❌ 无需 | 开始考试（状态：not_started → in_progress） |
 | POST | `/exam-records/{id}/answers` | ❌ 无需 | 保存单题答案 |
 | POST | `/exam-records/{id}/answers/batch` | ❌ 无需 | 批量保存答案 |
+| GET | `/exam-records/{id}/answers` | ❌ 无需 | 获取历史答案（刷新恢复） |
 | POST | `/exam-records/{id}/submit` | ❌ 无需 | 提交考试（状态：in_progress → submitted） |
+| GET | `/exam-records/{id}/grading` | ❌ 无需 | 获取评分状态（候选人查看评分进度） |
 
 ### HR 管理端点（需认证）
 
@@ -67,7 +69,66 @@
 
 ---
 
-## 5. 健康检查
+## 5. 评分管理（Grading）
+
+### 评分流程端点（HR/Admin）
+
+| 方法 | 路径 | 认证 | 说明 |
+|------|------|------|------|
+| POST | `/exams/records/{id}/grading` | ✅ HR/Admin | 创建评分记录 |
+| GET | `/exams/records/{id}/grading` | ✅ HR/Admin | 获取评分记录详情 |
+| POST | `/exams/records/{id}/grading/start` | ✅ HR/Admin | 开始评分（pending → grading） |
+| POST | `/exams/records/{id}/grading/complete` | ✅ HR/Admin | 完成评分 |
+| POST | `/exams/records/{id}/auto-grade` | ✅ HR/Admin | 执行自动评分（客观题 + AI 主观题） |
+
+### 评分规则端点（HR/Admin）
+
+| 方法 | 路径 | 认证 | 说明 |
+|------|------|------|------|
+| POST | `/exams/{exam_id}/score-rules` | ✅ HR/Admin | 创建评分规则 |
+| GET | `/exams/{exam_id}/score-rules` | ✅ HR/Admin | 获取评分规则列表 |
+| PUT | `/exams/score-rules/{rule_id}` | ✅ HR/Admin | 更新评分规则 |
+| DELETE | `/exams/score-rules/{rule_id}` | ✅ HR/Admin | 删除评分规则 |
+| POST | `/exams/{exam_id}/score-rules/init` | ✅ HR/Admin | 初始化默认评分规则 |
+
+### 评分结果查询（HR/Admin）
+
+| 方法 | 路径 | 认证 | 说明 |
+|------|------|------|------|
+| GET | `/grading/results` | ✅ HR/Admin | 评分结果列表（支持分页、筛选） |
+| GET | `/grading/results/{exam_record_id}` | ✅ HR/Admin | 评分结果详情（含答题对比） |
+
+---
+
+## 6. AI 评分接口（AI Scoring）
+
+| 方法 | 路径 | 认证 | 说明 |
+|------|------|------|------|
+| POST | `/ai-scoring/evaluate` | ✅ HR/Admin | 触发 AI 评分（单题） |
+| GET | `/ai-scoring/health` | ✅ HR/Admin | AI 服务健康检查 |
+
+### AI-Service 内部接口
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `ai-service:8001/api/v1/scoring/evaluate` | AI-Service 评分接口 |
+| POST | `ai-service:8001/api/v1/report/generate` | AI-Service 报告生成接口 |
+
+---
+
+## 7. AI 报告管理（Reports）
+
+| 方法 | 路径 | 认证 | 说明 |
+|------|------|------|------|
+| POST | `/reports/generate` | ✅ HR/Admin | 生成 AI 报告（触发报告生成流程） |
+| GET | `/reports/exam-records/{exam_record_id}` | ✅ HR/Admin | 按考试记录查询报告 |
+| GET | `/reports/{report_id}` | ✅ HR/Admin | 获取报告详情 |
+| GET | `/reports` | ✅ HR/Admin | 报告列表（支持分页、状态筛选） |
+| DELETE | `/reports/{report_id}` | ✅ HR/Admin | 删除报告 |
+
+---
+
+## 8. 健康检查
 
 | 方法 | 路径 | 认证 | 说明 |
 |------|------|------|------|
@@ -177,5 +238,6 @@ GET /api/v1/exam-records/1/paper
 
 | 日期 | 版本 | 修改内容 |
 |------|------|----------|
+| 2026-08-05 | 3.0 | 新增评分管理、AI 评分、AI 报告接口，补全缺失的候选人端点 |
 | 2026-08-05 | 2.0 | 更新为实际已实现接口，补充请求/响应示例 |
 | - | 1.0 | 初始版本（待定） |

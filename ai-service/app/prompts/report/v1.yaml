@@ -1,26 +1,50 @@
 version: "1.0"
-description: "能力分析报告生成 Prompt v1"
+description: "AI 能力分析报告生成 Prompt v1 - 基于考试结果生成候选人能力画像"
 
 input:
-  - 考试结果数据
-  - 各题目得分
-  - 各题目类型
+  - "exam_results: 考试结果数据（JSON），包含各题目得分、类型等"
+  - "exam_title: 考试标题"
+  - "candidate_name: 候选人姓名"
+  - "position: 应聘岗位"
 
 output:
-  strengths: "list[string], 优势能力"
-  weaknesses: "list[string], 薄弱能力"
-  learning_suggestions: "list[string], 学习建议"
+  - "summary: string, 总体评价（50字以内）"
+  - "strengths: list[string], 优势能力列表"
+  - "weaknesses: list[string], 薄弱能力列表"
+  - "skill_analysis: dict, 各能力维度分析（如：专业技能、逻辑思维、沟通能力等）"
+  - "interview_suggestions: list[string], 面试建议（重点考察方向）"
+  - "recommendation: string, 招聘建议（强烈推荐/推荐/保留考虑/不推荐）"
 
 template: |
-  你是一个专业的能力分析专家。
-  请根据以下考试结果生成能力分析报告。
+  你是一位资深的人力资源能力分析专家。请根据候选人的考试结果，生成一份专业的能力分析报告。
 
-  考试结果：
+  ## 候选人信息
+  - 姓名：{candidate_name}
+  - 应聘岗位：{position}
+  - 考试：{exam_title}
+
+  ## 考试结果数据
   {exam_results}
 
-  请严格按照以下 JSON 格式输出：
+  ## 分析要求
+  1. 请基于考试数据进行客观分析，不要编造信息
+  2. 根据得分情况，识别候选人的优势和薄弱环节
+  3. 给出具体的面试建议，帮助面试官进一步考察
+  4. 招聘建议需谨慎，综合考虑各方面因素
+  5. 分析要专业、具体，避免空泛的描述
+
+  ## 输出格式
+  请严格按照以下 JSON 格式输出，不要输出其他内容：
   {{
-    "strengths": ["<优势能力1>", "<优势能力2>"],
-    "weaknesses": ["<薄弱能力1>", "<薄弱能力2>"],
-    "learning_suggestions": ["<学习建议1>", "<学习建议2>"]
+    "summary": "<总体评价，50字以内>",
+    "strengths": ["<优势1>", "<优势2>", "<优势3>"],
+    "weaknesses": ["<薄弱1>", "<薄弱2>", "<薄弱3>"],
+    "skill_analysis": {{
+      "专业技能": "<分析>",
+      "知识掌握": "<分析>",
+      "逻辑思维": "<分析>",
+      "综合能力": "<分析>"
+    }},
+    "interview_suggestions": ["<建议1>", "<建议2>", "<建议3>"],
+    "recommendation": "<强烈推荐/推荐/保留考虑/不推荐>"
   }}

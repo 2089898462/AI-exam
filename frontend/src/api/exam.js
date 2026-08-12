@@ -8,6 +8,10 @@ export const examApi = {
   deleteExam: (id) => request.delete(`/exams/${id}`),
   publishExam: (id) => request.post(`/exams/${id}/publish`),
   closeExam: (id) => request.post(`/exams/${id}/close`),
+  cloneExam: (id, newTitle) => {
+    const params = newTitle ? { new_title: newTitle } : {}
+    return request.post(`/exams/${id}/clone`, { params })
+  },
   importExam: (id, file) => {
     const formData = new FormData()
     formData.append('file', file)

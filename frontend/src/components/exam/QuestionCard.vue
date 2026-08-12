@@ -92,14 +92,14 @@ const currentAnswer = computed({
   },
   set(val) {
     if (!props.disabled) {
-      emit('update:answer', val)
+      emit('update:answer', props.question.id, val)
     }
   },
 })
 
 function handleAnswer(val) {
   if (!props.disabled) {
-    emit('update:answer', val)
+    emit('update:answer', props.question.id, val)
   }
 }
 </script>

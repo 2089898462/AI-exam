@@ -1,0 +1,30 @@
+{
+  "test_flow": [],
+  "api_results": {
+    "hr_login": true,
+    "create_exam": {
+      "exam_id": 7,
+      "exam_code": "ACCEPT-1786070529"
+    },
+    "questions_added": 3,
+    "publish_exam": true,
+    "add_participant": true,
+    "create_record": {
+      "record_id": 6
+    },
+    "submit_exam": {
+      "status": "submitted"
+    },
+    "hr_view_results": true
+  },
+  "ai_results": {
+    "status": "completed",
+    "total_score": 28.5,
+    "answers_detail": 9
+  },
+  "db_validation": {},
+  "issues": [
+    "防重复参加可能未生效"
+  ],
+  "passed": true
+}

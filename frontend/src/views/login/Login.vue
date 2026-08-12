@@ -46,17 +46,30 @@ const rules = {
 }
 
 async function handleLogin() {
-  const valid = await formRef.value.validate().catch(() => false)
-  if (!valid) return
-  loading.value = true
+  console.log('[Login] 按钮点击触发')
   try {
-    await userStore.login(form.value)
-    ElMessage.success('登录成功')
-    router.push('/admin/exams')
-  } catch (e) {
-    // Error message already handled by request interceptor
-  } finally {
-    loading.value = false
+    const valid = await formRef.value.validate().catch((err) => {
+      console.log('[Login] 表单验证失败:', err)
+      return false
+    })
+    console.log('[Login] 表单验证结果:', valid)
+    if (!valid) return
+    loading.value = true
+    console.log('[Login] 开始登录, 用户名:', form.value.username)
+    try {
+      const res = await userStore.login(form.value)
+      console.log('[Login] 登录成功:', res)
+      ElMessage.success('登录成功')
+      await new Promise(resolve => setTimeout(resolve, 100))
+      router.replace('/admin/exams')
+    } catch (e) {
+      console.error('[Login] 登录失败:', e)
+      // Error message already handled by request interceptor
+    } finally {
+      loading.value = false
+    }
+  } catch (err) {
+    console.error('[Login] 异常:', err)
   }
 }
 </script>

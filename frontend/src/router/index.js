@@ -4,13 +4,19 @@ import { setupRouterGuard } from './guard'
 const routes = [
   {
     path: '/',
-    redirect: '/admin/exams',
+    redirect: '/candidate',
   },
   {
     path: '/login',
     name: 'Login',
     component: () => import('@/views/login/Login.vue'),
     meta: { title: '登录' },
+  },
+  {
+    path: '/candidate',
+    name: 'CandidateEntry',
+    component: () => import('@/views/candidate/CandidateEntry.vue'),
+    meta: { title: '考生入口' },
   },
   {
     path: '/admin',
@@ -40,6 +46,54 @@ const routes = [
         name: 'ExamDetail',
         component: () => import('@/views/admin/exam/ExamDetail.vue'),
         meta: { title: '考试详情' },
+      },
+      {
+        path: 'templates',
+        name: 'TemplateList',
+        component: () => import('@/views/admin/template/TemplateList.vue'),
+        meta: { title: '试卷模板' },
+      },
+      {
+        path: 'templates/create',
+        name: 'TemplateCreate',
+        component: () => import('@/views/admin/template/TemplateCreate.vue'),
+        meta: { title: '创建模板' },
+      },
+      {
+        path: 'templates/:id/edit',
+        name: 'TemplateEdit',
+        component: () => import('@/views/admin/template/TemplateCreate.vue'),
+        meta: { title: '编辑模板' },
+      },
+      {
+        path: 'templates/:id',
+        name: 'TemplateDetail',
+        component: () => import('@/views/admin/template/TemplateDetail.vue'),
+        meta: { title: '模板详情' },
+      },
+      {
+        path: 'grading',
+        name: 'GradingResultList',
+        component: () => import('@/views/admin/grading/GradingResultList.vue'),
+        meta: { title: '评分结果' },
+      },
+      {
+        path: 'grading/:examRecordId',
+        name: 'GradingResultDetail',
+        component: () => import('@/views/admin/grading/GradingResultDetail.vue'),
+        meta: { title: '评分详情' },
+      },
+      {
+        path: 'reports',
+        name: 'ReportList',
+        component: () => import('@/views/admin/report/ReportList.vue'),
+        meta: { title: 'AI 分析报告' },
+      },
+      {
+        path: 'reports/:id',
+        name: 'ReportDetail',
+        component: () => import('@/views/admin/report/ReportDetail.vue'),
+        meta: { title: '报告详情' },
       },
     ],
   },

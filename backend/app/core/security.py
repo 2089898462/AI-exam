@@ -3,6 +3,10 @@
 密码哈希、JWT Token 签发与校验
 
 所有配置均来自 app.core.settings，严禁在此文件硬编码敏感信息。
+
+Token 结构：
+  Header: {"alg": "HS256", "typ": "JWT"}
+  Payload: {"sub": user_id, "role": "hr", "iat": ..., "exp": ..., "type": "access"}
 """
 from __future__ import annotations
 
@@ -17,6 +21,8 @@ from app.core.config import settings
 JWT_ALGORITHM = settings.JWT_ALGORITHM
 JWT_SECRET_KEY = settings.JWT_SECRET_KEY
 JWT_ACCESS_TOKEN_EXPIRE_MINUTES = settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES
+
+SUPPORTED_ROLES = ("admin", "hr", "employee")
 
 
 def hash_password(password: str) -> str:
@@ -34,10 +40,15 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     )
 
 
-def create_access_token(subject: str | int, expires_delta: timedelta | None = None) -> str:
+def create_access_token(
+    subject: str | int,
+    role: str = "",
+    expires_delta: timedelta | None = None,
+) -> str:
     """签发 JWT Access Token
 
-    :param subject: 通常为用户 ID
+    :param subject: 用户 ID
+    :param role: 用户角色（admin/hr/employee）
     :param expires_delta: 自定义过期时间
     """
     now = datetime.now(timezone.utc)
@@ -52,6 +63,8 @@ def create_access_token(subject: str | int, expires_delta: timedelta | None = No
         "exp": int(expire.timestamp()),
         "type": "access",
     }
+    if role:
+        payload["role"] = role
     token = jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
     if isinstance(token, bytes):
         token = token.decode("utf-8")
@@ -78,3 +91,11 @@ def get_current_user_id(token: str) -> int | None:
         return int(payload.get("sub"))
     except (TypeError, ValueError):
         return None
+
+
+def get_current_user_role(token: str) -> str | None:
+    """从 Token 中解析用户角色"""
+    payload = verify_token(token)
+    if not payload:
+        return None
+    return payload.get("role")

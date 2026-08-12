@@ -208,6 +208,74 @@
 
 ---
 
+### 7. grading_record（评分记录表）
+
+| 字段 | 类型 | 约束 | 说明 |
+|------|------|------|------|
+| id | BIGINT | PK, AUTO_INCREMENT | 评分记录ID |
+| exam_record_id | BIGINT | FK → exam_record.id, UNIQUE, NOT NULL | 考试记录ID（一对一） |
+| status | ENUM('pending','grading','completed','failed') | NOT NULL, DEFAULT 'pending' | 评分状态 |
+| grading_type | ENUM('auto','ai','hybrid') | NOT NULL, DEFAULT 'auto' | 评分类型：自动/AI/混合 |
+| total_score | DECIMAL(8,2) | NULLABLE | 最终总分 |
+| auto_score | DECIMAL(8,2) | NULLABLE | 客观题得分 |
+| ai_score | DECIMAL(8,2) | NULLABLE | AI评分得分 |
+| passed | BOOLEAN | NULLABLE | 是否及格 |
+| started_at | DATETIME | NULLABLE | 评分开始时间 |
+| completed_at | DATETIME | NULLABLE | 评分完成时间 |
+| error_message | TEXT | NULLABLE | 错误信息（评分失败时记录） |
+| created_at | DATETIME | NOT NULL, DEFAULT CURRENT_TIMESTAMP | 创建时间 |
+| updated_at | DATETIME | NOT NULL, ON UPDATE CURRENT_TIMESTAMP | 更新时间 |
+
+**状态枚举说明：**
+| 值 | 说明 |
+|----|------|
+| pending | 待评分 |
+| grading | 评分中 |
+| completed | 评分完成 |
+| failed | 评分失败 |
+
+**评分类型说明：**
+| 值 | 说明 |
+|----|------|
+| auto | 自动评分（仅客观题） |
+| ai | AI评分（仅主观题） |
+| hybrid | 混合评分（客观题+AI评分） |
+
+**索引：**
+- `uq_grading_record_exam_record`: UNIQUE (exam_record_id) — 一个考试记录只能有一条评分记录
+
+---
+
+### 8. question_score_rule（题目评分规则表）
+
+| 字段 | 类型 | 约束 | 说明 |
+|------|------|------|------|
+| id | BIGINT | PK, AUTO_INCREMENT | 规则ID |
+| exam_id | BIGINT | FK → exam.id, NOT NULL, INDEX | 考试ID |
+| question_type | ENUM('single_choice','multiple_choice','true_false','short_answer') | NOT NULL | 题型 |
+| score_method | ENUM('auto_compare','ai_score','manual') | NOT NULL, DEFAULT 'auto_compare' | 评分方法 |
+| pass_score | DECIMAL(5,2) | NOT NULL, DEFAULT 0 | 该题型及格分 |
+| weight | DECIMAL(3,2) | NOT NULL, DEFAULT 1.00 | 权重 |
+| is_enabled | BOOLEAN | NOT NULL, DEFAULT TRUE | 是否启用 |
+| created_at | DATETIME | NOT NULL, DEFAULT CURRENT_TIMESTAMP | 创建时间 |
+| updated_at | DATETIME | NOT NULL, ON UPDATE CURRENT_TIMESTAMP | 更新时间 |
+
+**评分方法说明：**
+| 值 | 说明 |
+|----|------|
+| auto_compare | 自动比对标准答案（适用客观题） |
+| ai_score | AI评分（适用主观题） |
+| manual | 手动评分（HR人工批改） |
+
+**业务规则：**
+- 同一考试同一题型只能有一条规则（Service层保证唯一性）
+- 默认规则：单选/多选/判断 → auto_compare，简答 → ai_score
+
+**索引：**
+- `ix_question_score_rule_exam_id`: (exam_id)
+
+---
+
 ## MVP 需求覆盖检查
 
 | 需求 | 覆盖表 | 实现方式 |

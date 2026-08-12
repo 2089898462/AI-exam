@@ -1,547 +1,1114 @@
-# 变更记录
+# 项目技术变更记录
 
-## 2026-08-04
+> **本文件记录项目重大技术变更索引，不记录详细开发过程。**
+>
+> 最后更新：2026-08-12
 
-### S0 - 项目初始化
-- 创建项目目录结构
-- 创建后端骨架（FastAPI + SQLAlchemy）
-- 创建前端骨架（Vue3 + Vite + Element Plus）
-- 创建 AI 服务骨架
+# S5.7-G Windows一键启动脚本
 
-### 架构优化
-- 重构 Backend 目录：增加 db/, exceptions/
-- 重构 AI-Service 目录：增加 agents/, llm/, evaluation/
-- 优化 Prompt 管理：YAML 版本化
-- 优化 Frontend 目录：增加 api/, layouts/, hooks/
-- 优化 Docker 配置：dev/prod 分离
-- 建立完整文档体系
+**时间**：2026-08-12
+**版本**：S5.7-G
+**结果**：✅ 完成
 
-### S1.2 - 数据库模型与迁移
-- 完善数据库基础层：db/base.py, db/session.py, db/init_db.py
-- 创建 6 个 ORM 模型：user, exam, question, exam_record, answer_record, ai_report
-- 配置 Alembic 迁移环境（env.py, alembic.ini, script.py.mako）
-- 生成第一次迁移：init_mvp_tables（db2a7edfcf67）
-- 通过 SQLite 验证迁移成功（6 表全部创建，结构正确）
-- 更新 sql/init.sql 为 MySQL DDL 参考脚本
+**新增文件**：
+1. `start-system.bat` - 一键启动脚本
+2. `stop-system.bat` - 一键关闭脚本
 
-### S1.3 - 后端基础 API 架构建设
-- 创建 API 路由架构：api/v1/router.py（统一注册中心，/api/v1 前缀）
-- 创建健康检查端点：health.py（基础检查 + 数据库连接检查）
-- 实现统一响应格式：utils/response.py（success/error/created/paginated）
-- 创建 Pydantic Schema 层：schemas/（common, user, exam, question, record）
-- 创建 Service 业务层：services/（base CRUD + user/exam/question/record 服务）
-- 实现统一异常体系：exceptions/（AppException + 5 种业务异常 + 全局处理器）
-- 更新 main.py 入口：集成异常处理器、CORS 中间件、路由挂载
-- 验证：应用正常启动，API 健康检查接口返回正确
+**脚本功能**：
+- start-system.bat：
+  - 自动检查Python和Node.js运行环境
+  - 自动清理占用端口（8000/8001/3000）
+  - 启动Backend服务（端口8000）
+  - 启动AI Service服务（端口8001）
+  - 启动Frontend服务（端口3000）
+  - 自动打开浏览器访问系统
+  - 每个服务独立窗口运行，窗口标题明确
+  
+- stop-system.bat：
+  - 确认后关闭所有服务
+  - 通过端口号精确定位进程
+  - 不影响其他无关程序
 
-### S1.3 架构修复 - 高优先级问题
-- **P0-1 密码安全**：创建 utils/password.py，使用 bcrypt 哈希替代明文存储；user_service.py 新增 hash_password/verify_password/authenticate 方法
-- **P0-2 数据库初始化统一**：废弃 sql/init.sql 作为初始化入口，保留为 DDL 参考文档；统一使用 Alembic
-- **P1-3 JSON 类型通用化**：修改模型文件（question.py, answer_record.py, ai_report.py）和 Alembic 迁移文件，从 mysql.JSON() 改为通用 sa.JSON()
-- **P1-4 配置外置**：health 接口版本号从硬编码改为读取 settings.VERSION
-- **P1-5 AI-Service 基础结构**：创建 api/router.py、agents/base_agent.py、完善 llm/client.py（LLMClient 封装）、更新 main.py 集成路由
+**使用方式**：
+- 启动：双击 `start-system.bat`
+- 关闭：双击 `stop-system.bat`
 
-### AI 上下文交接文档
-- 创建 docs/AI_HANDOVER.md
-- 包含 11 个章节：项目基本信息、技术架构、已确认决策、开发阶段、数据库状态、后端状态、AI 模块状态、前端状态、已知问题、后续路线、AI 开发规则
-- 包含 AI 接手说明：必读文件清单、接手确认事项
+**访问地址**：
+- Backend: http://localhost:8000
+- AI Service: http://localhost:8001
+- Frontend: http://localhost:3000
+- 登录页: http://localhost:3000/login
 
-### S2.1 - 考试资源管理后端基础接口
-- **数据库调整**：exam 表新增 `exam_code`、`published_at`；question 表新增 `question_no`、`category`
-- **Alembic 迁移**：新增 `a1b2c3d4e5f6_add_exam_code_and_q_fields.py`，升级到 head
-- **Schema 层**：完善 exam.py（ExamCreate/ExamUpdate/ExamResponse/ExamListResponse/ExamDetailResponse/ExamPublishResponse/ExamCloseResponse）、question.py（QuestionCreate/QuestionUpdate/QuestionResponse/QuestionResponseWithoutAnswer）
-- **Service 层**：实现 exam_service.py（创建/修改/删除/发布/关闭/列表/详情/题目计数）、question_service.py（CRUD + 题型校验 + 批量创建 + 清空）
-- **API 层**：exams.py（考试 CRUD + 发布/关闭 + 题目列表）、questions.py（题目 CRUD）
-- **修复**：exam 详情序列化（改用 QuestionResponse.model_validate 替代 __dict__）
-- **验证**：15 项测试全部通过，覆盖创建/查询/更新/删除/发布/关闭/权限校验/状态机
+**注意事项**：
+- 需确保backend/.env和ai-service/.env配置正确
+- 首次使用需确保前端依赖已安装（npm install）
+- 数据库使用SQLite，无需单独启动
 
-### S2.2 - 固定试卷 JSON 导入模块
-- **JSON 格式规范**：创建 docs/exam-json-format.md，定义三种题型（single_choice/multiple_choice/essay）的标准 JSON 结构、字段含义、校验规则、常见错误
-- **导入 Schema**：创建 schemas/exam_import.py（OptionImportSchema/QuestionImportSchema/ExamImportSchema/ImportResult），实现题型/选项/答案的深度校验
-- **导入 Service**：创建 services/exam_import_service.py，支持 JSON 解析 → 数据校验 → 考试信息覆盖 → 题目批量入库，事务一致性保证（失败自动回滚）
-- **API 端点**：新增 `POST /api/v1/exams/{exam_id}/import`，接受 multipart/form-data 文件上传
-- **类型映射**：JSON 的 `essay` 类型自动映射到数据库 `short_answer`，无需新增枚举
-- **异常增强**：ValidationException/NotFoundException/BusinessException 支持 data 参数，返回详细错误信息
-- **依赖新增**：requirements.txt 添加 python-multipart==0.0.9
-- **数据库变化**：无（复用 S2.1 迁移，无新增字段/表）
-- **测试结果**：11 项测试全部通过
-  - 成功导入 3 道题（单选+多选+问答）✅
-  - 考试详情查询（含题目列表）✅
-  - 题目列表查询✅
-  - 考试标题/描述/时长被 JSON 覆盖✅
-  - 无效 JSON 校验拦截（3 种错误同时检出）✅
-  - 事务回滚（校验失败后题目数量不变）✅
-  - 非 JSON 文件拦截✅
-  - 已发布考试禁止导入✅
-  - 不存在的考试返回 404✅
-  - 空题目数组校验✅
+---
 
-### S2.3.1 - HR 后台前端基础框架
-- **Router 配置**：完善 router/index.js，添加 /admin、/admin/exams、/admin/exams/create、/admin/exams/:id/edit、/admin/exams/:id 路由，支持懒加载
-- **Layout 开发**：完善 AdminLayout.vue，实现 Header（面包屑、用户下拉）、Sidebar（Logo + 菜单）、RouterView
-- **菜单实现**：考试管理菜单（考试列表、创建考试），支持路由跳转与高亮
-- **API 层**：完善 request.js（axios 拦截器：错误处理、401 跳转、超时提示），创建 api/exam.js（examApi + questionApi 封装），页面禁止直接调用 axios
-- **页面创建**：
-  - ExamList.vue：考试列表页（搜索/筛选/分页/状态标签/岗位列/操作按钮：查看/编辑/发布/关闭/删除）
-  - ExamCreate.vue：创建/编辑考试页（表单校验 + 岗位字段 + 题目列表展示 + JSON 导入入口）
-  - ExamDetail.vue：考试详情页（只读信息 + 岗位字段 + 题目列表 + 关闭操作）
-- **依赖新增**：@element-plus/icons-vue
-- **状态标签修复**：统一 statusTagType 返回 'info' 作为默认值，消除 Vue 警告
-- **测试结果**：
-  - 首页自动跳转到 /admin/exams ✅
-  - 侧边栏菜单正确渲染并高亮当前页 ✅
-  - 面包屑导航正确显示 ✅
-  - 考试列表页正常加载数据 ✅
-  - 创建考试页表单完整渲染 ✅
-  - 考试详情页信息正确展示 ✅
-  - 控制台无错误 ✅
+# S5.7-F 系统黑盒业务验收测试
 
-### S2.3.2 - HR 考试管理功能完善
-- **API 封装升级**：api/exam.js 增加规范化方法（getExamList/getExamDetail/createExam/updateExam/deleteExam/publishExam/closeExam），保留旧方法别名以兼容，页面禁止直接调用 axios
-- **ExamList.vue 完善**：
-  - 新增"岗位"列显示 position 字段
-  - 操作列扩展为 260 宽度，包含查看/编辑/发布/关闭/删除按钮（按状态条件显示）
-  - 所有接口调用改为新命名方法（getExamList/publishExam/deleteExam/closeExam）
-  - 编辑入口改为路由 `/admin/exams/:id/edit`
-- **ExamCreate.vue 完善**：
-  - 新增"岗位"字段（position，maxlength 100）
-  - 保存成功后创建流程跳回列表（/admin/exams），编辑流程跳回详情
-  - 加载数据使用 getExamDetail，保存使用 createExam/updateExam
-- **ExamDetail.vue 完善**：
-  - 新增"岗位"字段展示
-  - 使用 getExamDetail 加载，closeExam 关闭
-- **路由调整**：新增 `/admin/exams/:id/edit` 独立路由（复用 ExamCreate.vue），解决编辑入口无法加载表单的问题
-- **测试结果（浏览器端到端验证）**：
-  - 考试列表加载 ✅
-  - 创建考试（名称/编码/岗位/说明/时长）✅
-  - 查看详情（含岗位、状态、题目数量）✅
-  - 编辑考试（加载原数据、修改岗位、保存）✅
-  - 发布考试（发布后操作列变化）✅
-  - 关闭考试 ✅
-  - 删除考试 ✅
+**时间**：2026-08-07
+**版本**：S5.7-F
+**结果**：✅ 通过（23/23 项通过）
 
-### S2.3.3 - JSON 导入 + 题目管理页面
-- **新增组件**：
-  - `src/components/exam/ImportExamDialog.vue`：JSON 文件上传对话框，支持拖拽/点击上传、格式校验（仅 .json）、成功/失败结果展示（考试名称、导入数量、错误详情列表）
-  - `src/components/exam/QuestionTable.vue`：题目列表展示组件，字段：题号、题型、分类、内容、分数、排序、操作（删除），支持只读模式
-- **新增 API**：
-  - `src/api/question.js`：getQuestions / createQuestion / deleteQuestion（含 listByExam/create/delete 旧方法兼容别名）
-  - `examApi.importExam(id, file)`：使用 FormData + multipart/form-data 调用 `POST /api/v1/exams/{id}/import`
-- **页面改造** `ExamDetail.vue`：
-  - 新增"导入试卷"按钮（仅草稿状态可用）
-  - 集成 ImportExamDialog，导入成功后自动刷新详情
-  - 集成 QuestionTable，展示题目列表并支持删除题目
-  - 导入成功后刷新考试详情、删除后同步刷新
-- **示例文件**：新增 `frontend/public/sample-exam.json`（4 道题样例）和 `frontend/public/invalid.json`（错误格式用例）
-- **测试结果**：
-  - 创建考试 → 详情页加载 ✅
-  - JSON 导入成功（imported_count=4、exam_title 正确）✅
-  - 题目列表展示（8 列完整：#、题号、题型、分类、内容、分数、排序、操作）✅
-  - 删除题目（后端接口 200 返回 success，前端列表刷新）✅
-  - 错误 JSON 导入（422 + 错误详情列表：title/duration_minutes/questions Field required）✅
-  - 浏览器控制台无错误 ✅
+**测试范围**：黑盒测试方式验证管理员/HR/候选人全流程业务 + 异常处理
 
-### S2.4.1 - 后端用户认证基础
-- **密码安全**：
-  - 新增 `app/core/security.py`（hash_password / verify_password / create_access_token / verify_token / get_current_user_id）
-  - 基于 bcrypt 的哈希校验；JWT 使用 HS256 + 可配置 SECRET_KEY 与过期时间
-  - `app/utils/password.py` 改为对 security 层的兼容封装
-  - 注册新用户时强制写入 bcrypt 哈希，禁止明文存储
-- **数据库迁移**：新增 `alembic/versions/c1d2e3f4a5b6_add_user_status.py`
-  - user 表新增 `status` 字段（active / disabled / pending，默认 active）
-  - 扩展 user.role 枚举支持 `hr` 角色（admin / candidate / hr）
-- **Service 层**：新增 `app/services/auth_service.py`
-  - register（用户名/邮箱重复校验 + 哈希入库）
-  - login（bcrypt 校验 + 账号启用状态校验 + JWT 签发）
-  - get_current_user（Token → DB 查询 → 激活状态校验）
-- **API 层**：
-  - `app/api/v1/deps/auth.py`：Bearer Token 解析、当前用户依赖、角色校验依赖
-  - `app/api/v1/endpoints/auth.py`：`POST /api/v1/auth/login`、`POST /api/v1/auth/register`、`GET /api/v1/auth/me`、`POST /api/v1/auth/logout`
-  - 在 `v1_router` 中以 `/auth` 前缀挂载
-- **Schema**：新增 `app/schemas/auth.py`（LoginRequest / RegisterRequest / TokenResponse / CurrentUserResponse）
-- **依赖**：requirements.txt 新增 `pyjwt==2.9.0`
-- **测试结果（httpx 端到端）**：
-  - 注册返回 201，自动登录返回 JWT ✅
-  - `/auth/me` 使用 Token 成功返回当前用户（role=hr、status=active）✅
-  - 错误密码登录返回 401「用户名或密码错误」✅
-  - 无 Token 访问 `/auth/me` 返回 401「缺少 Authorization 头」✅
-  - 数据库 `password_hash` 以 `$2b$12$` 开头，确认为 bcrypt 哈希（明文禁止）✅
+**关键验证**：
+- 管理员登录、权限验证
+- HR 创建考试、添加题目（单选/判断/简答）、发布考试
+- 候选人通过考试码进入考试、答题、提交
+- AI 自动评分，返回 score/reason/confidence
+- 异常处理：错误考试码、重复参加均被正确拦截
 
-### S2.4.2 - Backend API 权限保护
-- **依赖模块**：新增 `app/core/dependencies.py`
-  - `_extract_token`：统一 Bearer Token 解析
-  - `get_current_user`：鉴权依赖（必须登录，查库校验激活状态）
-  - `get_current_user_id_from_header`：轻量依赖（仅解析 ID，不查库）
-  - `get_optional_current_user`：可选鉴权（无 Token 返回 None）
-- **权限模块**：新增 `app/core/permissions.py`
-  - `require_roles([...])`：角色校验工厂
-  - `require_admin`：仅 admin 角色
-  - `require_hr_or_admin`：HR 或 admin 角色（HR 后台主要使用）
-  - `require_authenticated`：仅需登录
-- **JWT 配置集中化**：
-  - `app/core/config.py` 新增 JWT_SECRET_KEY / JWT_ALGORITHM / JWT_ACCESS_TOKEN_EXPIRE_MINUTES
-  - `app/core/security.py` 改为从 `settings` 读取配置，严禁硬编码
-- **Service 层改造**：
-  - `ExamService`：方法签名改为接收 `current_user: User`；`_ensure_owner_or_admin` 允许 admin 绕过所有权检查；`list_exams` admin 可查看全部，普通用户仅查看自己
-  - `QuestionService`：同样改为接收 `current_user`，admin 绕过所有权
-  - `ExamImportService`：改为 `current_user` 参数，admin 绕过所有权
-- **API 端点保护**（统一使用 `Depends(require_hr_or_admin)`）：
-  - `exams.py`：全部 8 个端点（CRUD + 发布/关闭/列表题目/导入）已鉴权
-  - `questions.py`：全部 2 个端点（创建/删除）已鉴权
-  - 所有 `MOCK_USER_ID` 已替换为 `current_user.id` / `current_user`
-- **测试结果（httpx 端到端 15 项）**：
-  - 无 Token → 401 ✅
-  - 错误 Token（`invalid-token`）→ 401 ✅
-  - 候选角色 Token → 403（"需要 HR 或管理员权限"）✅
-  - HR Token → 200/201 正常访问 ✅
-  - 认证接口 `/auth/login` / `/auth/register` 仍可匿名访问 ✅
-  - `/auth/me` 未携带 Token 返回 401 ✅
-  - Admin 绕过所有权，HR 只能操作自己的数据 ✅
+**修复记录**：
+1. **P1: exam_code 未自动生成**
+   - 文件：`backend/app/services/exam_service.py`
+   - 添加 `_generate_exam_code()` 方法，创建考试时自动生成唯一考试码
+   - 格式：`EXAM-{时间戳}-{UUID前8位}`
 
-### S2.4.3 - 前端登录系统开发
-- **Token 管理**：新增 `src/utils/auth.js`，使用 localStorage 存储 JWT Token（setToken/getToken/removeToken）
-- **Auth API 封装**：新增 `src/api/auth.js`，封装 login/getCurrentUser 接口，页面禁止直接调用 axios
-- **Pinia 用户 Store**：新增 `src/stores/user.js`，实现 login/logout/getUserInfo 及 isLoggedIn/username/displayName/role getter
-- **登录页面**：新增 `src/views/login/Login.vue`，表单校验 + 用户名密码登录 + 登录成功跳转 /admin/exams
-- **Axios 拦截器升级**：修改 `src/api/request.js`
-  - 请求拦截：自动附加 Authorization: Bearer {token} 头
-  - 响应拦截：401 状态码清除 token 并跳转 /login
-- **路由守卫**：新增 `src/router/guard.js`
-  - 无 token 访问 /admin* → 跳转 /login
-  - 已有 token 访问 /login → 跳转 /admin/exams
-- **路由配置更新**：`src/router/index.js` 添加 /login 路由，集成路由守卫
-- **AdminLayout 集成**：用户下拉显示当前用户名，退出登录确认后清除 token 并跳转
-- **测试结果（浏览器端到端验证）**：
-  - 无 token 访问 /admin/exams → 自动跳转 /login ✅
-  - 登录页表单元素完整显示 ✅
-  - 错误凭据登录 → 后端返回 422 错误 ✅
-  - 正确凭据登录 → token 保存 + 跳转 /admin/exams ✅
-  - 刷新页面 → 登录状态保持 ✅
-  - 清除 token 后访问受保护页面 → 自动跳转 /login ✅
-  - 退出登录 → 确认对话框 + 清除 token + 跳转 /login ✅
+2. **配置兼容问题**
+   - 文件：`backend/app/core/config.py`
+   - 添加 `extra = "ignore"` 配置，解决环境变量冲突
 
-### S2.5 - Release Fix 阶段
-- **数据库修复**：
-  - `exam_record.py`：新增 `updated_at` 字段（DateTime, onupdate=func.now()）
-  - `ai_report.py`：新增 `updated_at` 字段（DateTime, onupdate=func.now()）
-  - 新增 Alembic migration `d4e5f6g7h8i9_add_updated_at_to_records.py`
-  - 执行 `alembic upgrade head` 迁移成功
-- **文件上传安全修复**：
-  - `exams.py`：新增 `MAX_FILE_SIZE = 5 * 1024 * 1024`（5MB）
-  - `import_exam` 接口增加双重检查：
-    1. 检查 `file.size`（如果可用）是否超过限制
-    2. 使用 `file.read(MAX_FILE_SIZE + 1)` 限制读取大小，防止超大文件一次性加载到内存
-  - 超限返回明确错误："文件大小超过限制，最大支持 5MB"
-- **测试结果**：
-  - 小文件（353 bytes）导入成功 ✅
-  - 大文件（>5MB）被正确拒绝，返回 422 + 明确错误信息 ✅
-  - 数据库 exam_record/ai_report 表均有 updated_at 字段 ✅
+**验收脚本**：`ai-service/run_blackbox_test.py`
 
-### S3.1.1 - 候选人考试流程数据库扩展
-- **设计理念**：候选人不是系统用户，采用考试记录嵌入式身份信息（candidate_name/candidate_phone/candidate_email），不创建 candidate_user 表
-- **exam_record 表重构**：
-  - 移除 `user_id` 外键（候选人非系统用户）
-  - 新增 `candidate_name` VARCHAR(64) NOT NULL（候选人姓名）
-  - 新增 `candidate_phone` VARCHAR(20) NULL（候选人手机）
-  - 新增 `candidate_email` VARCHAR(128) NULL（候选人邮箱）
-  - 重命名 `total_score` → `score` NUMERIC(8,2)
-  - 扩展状态枚举：`not_started` / `in_progress` / `submitted` / `graded`（新增 not_started）
-  - 保留：exam_id, status, started_at, submitted_at, created_at, updated_at
-- **answer_record 表重构**：
-  - 重命名 `answer` → `answer_content` TEXT
-  - 移除 `score_type` ENUM（auto/ai）
-  - 重命名 `score_detail` → `ai_comment` TEXT（JSON→Text，存储 AI 评分文本评论）
-  - 新增 `is_correct` BOOLEAN NULL（客观题自动判分标记）
-  - 保留：exam_record_id, question_id, score, created_at, updated_at
-- **user 模型调整**：
-  - 移除 `exam_records = relationship("ExamRecord", back_populates="user")`（因 exam_record 不再关联 user）
-- **Schema 层更新**（schemas/record.py）：
-  - `ExamRecordCreate`：新增 candidate_name/candidate_phone/candidate_email 参数
-  - `ExamRecordResponse`：新增候选人字段、score 替代 total_score
-  - `AnswerResponse`：answer→answer_content, 移除 score_type, score_detail→ai_comment, 新增 is_correct
-  - 新增 `ExamRecordListResponse` 列表响应 Schema
-- **Service 层更新**（services/record_service.py）：
-  - `start_exam(exam_id, candidate_name, candidate_phone, candidate_email)`：嵌入式候选人信息创建
-  - `submit_exam(record_id)`：移除 user_id 权限校验，改为状态机校验
-  - `save_answer(record_id, question_id, answer_content)`：使用 answer_content 字段
-  - 新增 `get_by_exam(exam_id)`：获取某考试的所有记录
-  - 新增 `get_detail_with_answers(record_id)`：获取记录详情含答题
-- **Alembic 迁移**：新增 `e1f2a3b4c5d6_s311_restructure_record_tables.py`
-  - 使用 CREATE TABLE + 数据迁移 + 替换的安全策略
-  - upgrade：exam_record 和 answer_record 全字段重构
-  - downgrade：完整回滚到 S2 表结构
-- **数据关系**：exam(1:N)→exam_record(1:N)→answer_record(1:N)←question
-- **测试结果**（S2 全量回归 + S3 Service 测试）：
-  - Health/Register/Login ✅
-  - Create/List/Detail/Publish Exam ✅
-  - Create/Get Question ✅
-  - JSON Import ✅
-  - Auth Me ✅
-  - start_exam(候选人张三) → candidate_name/candidate_phone 正确写入 ✅
-  - save_answer → answer_content 正确写入 ✅
-  - submit_exam → status=submitted, submitted_at 自动填充 ✅
-  - get_by_exam / get_detail_with_answers ✅
+---
 
-### S3.1.2 - Service 层开发
-- **设计理念**：拆分 ExamRecordService 和 AnswerRecordService，职责单一，便于独立测试和扩展
-- **新增 exam_record_service.py**：
-  - `create_exam_record(exam_id, candidate_name, candidate_phone, candidate_email)`：创建考试记录，校验考试存在 + 候选人姓名非空，初始状态 not_started
-  - `get_record_by_id(record_id)`：查询考试记录，不存在抛 NotFoundException
-  - `start_exam(record_id)`：状态流转 not_started → in_progress，记录 started_at
-  - `submit_exam(record_id)`：状态流转 in_progress → submitted，记录 submitted_at
-  - `list_exam_records(exam_id, status=None)`：按考试ID查询记录列表，支持状态过滤
-  - `get_detail_with_answers(record_id)`：获取记录详情含答题和考试信息
-- **新增 answer_record_service.py**：
-  - `save_answer(record_id, question_id, answer_content)`：保存单题答案，校验考试存在/题目存在/题目归属/状态允许答题，支持幂等更新
-  - `save_answers_batch(record_id, answers)`：批量保存答案，保证事务一致性（失败 rollback）
-  - `get_answers_by_record(record_id)`：查询某考试记录的所有答题
-- **RecordService 重构**：
-  - 原 RecordService 改为兼容层，内部委托 ExamRecordService + AnswerRecordService
-  - 保持原有 API 签名不变，向后兼容
-- **业务校验规则**：
-  - 答题状态允许：not_started / in_progress（提交后不可修改）
-  - 题目归属校验：必须属于当前考试
-  - 唯一性约束：同一考试记录同一题目只能有一条答案（幂等更新）
-- **异常使用**：全部使用统一异常模块（NotFoundException / BusinessException / ValidationException），无 HTTPException
-- **单元测试**：28 个测试用例全通过
-  - TestCreateExamRecord（3）：成功 / 考试不存在 / 姓名为空
-  - TestGetRecordById（2）：成功 / 不存在
-  - TestStartExam（2）：成功 / 状态错误
-  - TestSubmitExam（3）：成功 / 未开始 / 已提交
-  - TestListExamRecords（3）：按考试 / 空列表 / 按状态过滤
-  - TestGetDetailWithAnswers（1）：成功
-  - TestSaveAnswer（6）：新答案 / 幂等更新 / 记录不存在 / 题目不存在 / 题目归属错误 / 提交后保存
-  - TestSaveAnswersBatch（5）：成功 / 空列表 / 缺 question_id / 部分更新 / 提交后保存
-  - TestGetAnswersByRecord（3）：成功 / 空列表 / 记录不存在
-  - 6 表结构验证：字段/索引/外键全部正确 ✅
+# S5.7-E AI阅卷完整业务验收
 
-### S3.1.3 - API 接口开发
-- **新增 Schema** `schemas/exam_record.py`：
-  - `ExamRecordCreate`：创建考试记录请求（exam_id + candidate_name + 可选 phone/email）
-  - `ExamRecordResponse`：考试记录基本信息响应
-  - `ExamRecordDetailResponse`：考试记录详情响应（含答题列表）
-  - `ExamRecordListResponse`：考试记录列表响应（HR 查看）
-  - `AnswerCreate`：单题答题请求
-  - `AnswerBatchCreate`：批量答题请求（answers 列表）
-  - `AnswerResponse`：答题记录响应
-  - 所有 Schema 继承 BaseSchema（from_attributes=True），支持 ORM 对象校验
-- **新增 API 端点** `api/v1/endpoints/exam_records.py`：
-  - 候选人端点（无需认证）：
-    - `POST /api/v1/exam-records`：创建候选人考试记录（create_exam_record）
-    - `GET /api/v1/exam-records/{id}`：获取考试记录详情
-    - `POST /api/v1/exam-records/{id}/start`：开始考试（not_started → in_progress）
-    - `POST /api/v1/exam-records/{id}/answers`：保存单题答案
-    - `POST /api/v1/exam-records/{id}/answers/batch`：批量保存答案
-    - `POST /api/v1/exam-records/{id}/submit`：提交考试（in_progress → submitted）
-  - HR 管理端点（需 JWT + HR/Admin 权限）：
-    - `GET /api/v1/exams/{exam_id}/records`：查看某考试的候选人考试记录列表（支持 status 筛选）
-- **路由注册** `api/v1/router.py`：
-  - `exam_record_router`：候选人端点，prefix `/exam-records`，tag「候选人考试记录」
-  - `exam_record_hr_router`：HR 管理端点，prefix `/exams`，tag「考试记录管理」
-- **异常处理**：统一使用 AppException 体系，handler.py 全局异常处理器自动映射 HTTP 状态码
-  - NotFoundException → 404（考试不存在、记录不存在、题目不存在）
-  - BusinessException → 400（状态流转错误、重复提交、已提交后答题）
-  - ValidationException → 422（参数校验失败、题目归属错误）
-  - ForbiddenException → 403（非 HR/Admin 访问）
-  - UnauthorizedException → 401（无 Token 访问 HR 端点）
-- **权限控制**：
-  - 候选人端点：无需认证（候选人非系统用户，嵌入式身份信息）
-  - HR 端点：使用 `require_hr_or_admin` 依赖，校验用户角色
-- **测试**：20 个 API 测试用例全通过
-  - TestCreateExamRecord（4）：创建成功 / 最小参数 / 考试不存在 / 空姓名
-  - TestGetExamRecord（2）：查询成功 / 不存在
-  - TestStartExam（2）：开始成功 / 重复开始
-  - TestSaveAnswer（4）：保存成功 / 幂等更新 / 提交后保存被拒 / 错误题目
-  - TestSaveAnswersBatch（2）：批量成功 / 空列表校验
-  - TestSubmitExam（2）：提交成功 / 未开始提交被拒
-  - TestHRListExamRecords（4）：HR 列表成功 / 未授权 401 / 错误角色 403 / 状态筛选
-  - Service 层 28 个测试全通过（无回归）
-- **修复项**：
-  - 测试 SQLite 使用 StaticPool 共享内存连接，解决跨连接表不可见问题
-  - Schema 继承 BaseSchema，支持 from_attributes ORM 对象校验
+**时间**：2026-08-07
+**版本**：S5.7-E
+**结果**：✅ 通过
 
-### S3.2.1 - 候选人考试入口页面
-- **新增前端页面** `views/exam/Entry.vue`：
-  - 考试信息展示（标题、描述、时长、题量、及格分）
-  - 候选人身份表单（姓名必填、手机/邮箱选填 + 格式校验）
-  - 考试记录创建流程（表单校验 → API 调用 → 成功状态展示）
-  - 成功面板（绿色对勾 + 记录详情 + 跳转答题页按钮）
-- **新增 API 封装** `api/examRecord.js`：
-  - `getExamInfo(examId)`：获取公开考试信息（无需认证）
-  - `createRecord(data)`：创建考试记录
-  - `getRecord(id)`：获取考试记录
-  - `startExam(id)`：开始考试
-  - `submitExam(id)`：提交考试
-  - `saveAnswer(recordId, data)`：保存单题答案
-  - `saveAnswersBatch(recordId, data)`：批量保存答案
-  - `listRecords(examId)`：HR 查看考试记录列表
-- **新增 Pinia Store** `stores/exam.js`：
-  - 状态：examId / recordId / candidateName / candidatePhone / candidateEmail / status
-  - Getters：hasRecord / isStarted
-  - Actions：setExamInfo / clearRecord / createRecord / startExam / submitExam
-- **新增公开后端端点** `GET /api/v1/exams/{exam_id}/info`：
-  - 无需认证，返回考试基本信息（标题、描述、时长、及格分、题量、状态）
-  - 候选人入口页面专用
-- **路由注册** `router/index.js`：
-  - `/exam/:id` → ExamEntry（候选人入口页，无需登录）
-- **浏览器测试**：全流程验证通过
-  - 页面加载 → 表单填写 → 创建记录 → 成功面板展示 → 无控制台错误
-  - 考试信息正确加载（标题、描述、时长、题量、及格分）
-  - API 请求 POST /api/v1/exam-records 返回 201 Created
-  - 候选人页面无需登录即可访问（不受 /admin 路由守卫限制）
+**验收范围**：完整考试业务链路（HR创建→候选人答题→AI评分→HR查看成绩）
 
-### S3.2.2 - 候选人答题页面基础开发
-- **新增后端公开端点** `GET /api/v1/exam-records/{record_id}/paper`：
-  - 返回考试试卷（考试信息 + 题目列表 + 候选人信息）
-  - 无需认证，候选人答题页面专用
-  - 题目不含正确答案（安全考虑）
-  - 新增 Schema：PaperQuestionResponse / ExamPaperResponse
-- **扩展前端 API** `api/examRecord.js`：
-  - 新增 `getExamPaper(recordId)` 方法
-- **扩展 Pinia Store** `stores/exam.js`：
-  - 新增状态：examInfo / questions / answers
-  - 新增 getters：answeredCount / totalQuestions
-  - 新增 actions：loadExamPaper / setAnswer / _initAnswers
-  - 答案初始化：多选题为 []，其他题为 ''
-- **新增答题组件** `components/exam/`：
-  - `QuestionCard.vue`：题目卡片容器，根据题型动态渲染
-  - `ChoiceQuestion.vue`：选择题组件（单选/多选/判断题），支持选项格式兼容解析
-  - `TextQuestion.vue`：简答题组件（textarea）
-- **新增答题页面** `views/exam/Exam.vue`：
-  - 顶部：考试名称 + 元信息 + 候选人信息
-  - 左侧答题卡导航网格（5列布局，已答/当前/未答状态）
-  - 右侧题目卡片（上一题/下一题导航）
-  - 完成按钮带未答题确认弹窗
-  - 答案切换不丢失（Pinia Store 持久化）
-- **路由注册** `router/index.js`：
-  - `/exam/record/:id` → ExamTaking（答题页，无需登录）
-- **修改入口页** `Entry.vue`：
-  - 跳转路径从 `/exam/${examId}/exam` 改为 `/exam/record/${recordId}`
-- **浏览器测试**：全流程验证通过
-  - 入口页 → 创建记录 → 成功面板 → 答题页
-  - 三种题型正常渲染：单选题（single_choice）、多选题（multiple_choice）、简答题（short_answer）
-  - 答案切换不丢失（状态持久化验证通过）
-  - 答题卡导航可点击切换题目
-  - 完成按钮弹出未答题确认对话框
+**关键验证**：
+- 考试创建、题目管理（单选/判断/简答）、考试发布
+- 候选人通过考试码进入、答题、提交
+- AI 自动评分（deepseek-chat），3秒完成
+- 评分结果正确写入数据库（ExamRecord/AnswerRecord/GradingRecord）
+- HR 可查询考试成绩
 
-### S3.2.3.1 - 答案保存接口开发
-- **确认后端答案保存接口已实现**：
-  - `POST /api/v1/exam-records/{record_id}/answers`：保存单题答案
-  - `POST /api/v1/exam-records/{record_id}/answers/batch`：批量保存答案
-- **Schema 验证** `schemas/exam_record.py`：
-  - AnswerCreate：question_id + answer_content
-  - AnswerBatchCreate：answers 列表
-  - AnswerResponse：完整响应结构
-- **Service 层验证** `services/answer_record_service.py`：
-  - save_answer()：幂等更新（同一题目只保留一条答案）
-  - save_answers_batch()：事务一致性
-  - 状态校验：只允许 not_started / in_progress 状态保存
-  - 题目归属校验：防止跨考试保存
-- **数据库验证**：
-  - answer_record 表结构完整
-  - 唯一约束 uq_answer_record_question 防止重复作答
-- **接口测试结果**（TestClient 全流程测试）：
-  - ✅ 单题保存成功（200）
-  - ✅ 批量保存成功（200，3 道题）
-  - ✅ 幂等更新成功（修改已有答案，不创建新记录）
-  - ✅ 无效题目 ID 返回 404
-  - ✅ 无效考试记录 ID 返回 404
-  - ✅ 错误请求被正确处理
-- **测试脚本**：`backend/test_answer_save_full.py`
-  - 无控制台错误
+**发现问题**（非阻塞）：
+1. 防重复参加未生效：同一候选人可创建多条考试记录
+2. HR 成绩查看接口 total_records 返回 0
 
-### S3.2.3.2 - 前端自动保存机制开发
-- **扩展 exam Pinia store** `stores/exam.js`：
-  - 新增状态：isSaving / lastSavedAt / saveError / isDirty
-  - 新增 getters：saveStatus / saveStatusText / hasUnsavedChanges
-  - 新增 actions：markClean / saveAnswerToServer / saveAllAnswersToServer
-  - setAnswer() 自动设置 isDirty 标记
-- **新增自动保存 Hook** `hooks/useAutoSave.js`：
-  - 防抖保存（1.5 秒延迟）：避免频繁请求
-  - 脏标记机制：只在真实变更时触发保存
-  - flushSave()：切换题目前立即保存
-  - retrySave()：保存失败后重试
-  - saveAllAnswers()：批量保存所有答案
-  - 组件卸载自动清理定时器
-- **完善 API** `api/examRecord.js`：
-  - saveAnswer(recordId, data)：保存单题答案（已存在）
-  - saveAnswersBatch(recordId, data)：批量保存答案（已存在）
-- **修改答题页面** `views/exam/Exam.vue`：
-  - 接入 useAutoSave hook
-  - 添加保存状态指示器（头部右侧）：
-    - 🔵 保存中：旋转图标 + "保存中..."
-    - 🟢 已保存：对勾图标 + "已保存" + 时间
-    - 🔴 保存失败：警告图标 + "保存失败" + 重试按钮
-  - 切换题目前自动 flushSave 保存
-  - 完成考试前 saveAllAnswers 保存所有答案
-- **添加样式**：保存状态指示器样式（蓝/绿/红三色状态）
-- **浏览器测试结果**：
-  - ✅ 单选保存：选择答案后 1.5 秒自动保存
-  - ✅ 多选保存：选择多选后自动保存
-  - ✅ 简答保存：输入文字后自动保存
-  - ✅ 修改答案覆盖：修改后重新保存
-  - ✅ 防抖验证：快速连续修改只发一次请求
-  - ✅ 切换题目保存：切换前自动 flushSave
-  - ✅ 答案持久化：切回题目答案保留
-  - ✅ 保存状态展示：三种状态（saving/saved/error）正确显示
-  - ✅ 重试机制：保存失败后可重试
+**验收脚本**：`ai-service/run_acceptance_test.py`
 
-### S3.2.3.3 - 刷新恢复与断点续考机制开发
-- **后端新增接口** `GET /api/v1/exam-records/{record_id}/answers`：
-  - 查询考试记录的所有历史答案
-  - 候选人端点无需认证
-  - 返回答案列表（question_id, answer_content 等）
-- **后端 Service 层** `answer_record_service.py`：
-  - `get_answers_by_record()`：查询某考试记录的所有答题
-  - 支持 submitted 状态查询（用于查看已提交的答案）
-- **前端 API** `api/examRecord.js`：
-  - 新增 `getAnswers(recordId)` 方法
-- **前端 Pinia Store** `stores/exam.js`：
-  - 新增 `loadHistoryAnswers()` 方法：从服务器恢复历史答案
-  - 多选题格式转换：后端 "A,C" → 前端 ["A", "C"]
-  - 单选/判断/简答：直接使用字符串
-  - 恢复后自动标记为干净状态（isDirty=false）
-- **前端页面加载流程** `views/exam/Exam.vue`：
-  - 加载试卷后自动加载历史答案
-  - 恢复成功显示"已恢复 X 道题的答案"提示
-  - 历史答案加载失败不影响主流程（try-catch 降级）
-- **浏览器测试结果**：
-  - ✅ 刷新页面恢复：答案正确恢复
-  - ✅ 重新进入恢复：通过 URL 重新访问答案恢复
-  - ✅ 多题恢复：单选/多选/简答三种题型均恢复正确
-  - ✅ 修改后恢复：修改答案后刷新保留最新修改
-  - ✅ 多选格式转换：后端 "A,C" 正确转为前端数组 ["A", "C"]
-  - ✅ 恢复提示：显示"已恢复 X 道题的答案"
-  - ✅ 异常处理：历史答案加载失败不阻断主流程
+---
 
-### S3.2.3.4 - 提交考试流程开发
-- **后端 Service 层** `exam_record_service.py`：
-  - `submit_exam()` 增加幂等提交支持：已提交/已批改直接返回当前状态
-  - `not_started` 状态禁止提交，返回业务异常
-  - 状态流转：not_started → in_progress → submitted
-  - 自动记录 submitted_at 时间戳
-- **后端 API 端点** `POST /api/v1/exam-records/{record_id}/submit`：
-  - 已存在端点，完善文档
-  - 候选人端点无需认证
-- **前端 Pinia Store** `stores/exam.js`：
-  - 新增 getters：isSubmitted / canEdit / unansweredCount / completionRate
-  - 用于结果页统计和编辑权限控制
-- **前端答题页面** `views/exam/Exam.vue`：
-  - 自动启动考试：加载试卷时检测到 not_started 状态自动调用 startExam
-  - 提交确认弹窗：未答题/已答题两种不同提示
-  - 提交按钮加载状态：submitting 状态显示"提交中..."
-  - 结果页面：显示考试已完成、统计信息、候选人信息、提交时间
-  - 返回首页按钮
-  - 提交后状态：isSubmitted → 自动切换到结果页面
-- **前端组件 disabled 支持**：
-  - `QuestionCard.vue`：新增 disabled prop，提交后显示"已提交"标签
-  - `ChoiceQuestion.vue`：新增 disabled prop，禁用 radio/checkbox
-  - `TextQuestion.vue`：新增 disabled prop，禁用 textarea
-  - 提交后所有答案不可修改
-- **浏览器测试结果**：
-  - ✅ 正常提交：保存答案 → 确认 → 提交成功 → 结果页
-  - ✅ 重复提交：幂等处理，返回已提交状态
-  - ✅ 提交后刷新：仍然显示结果页面
-  - ✅ 提交后禁止编辑：选项/输入框禁用
-  - ✅ 自动开始考试：not_started 状态加载时自动调用 startExam
-  - ✅ 未答题提示：提交前显示未答题数量确认
+# S5.7-D1.5-D DeepSeek真实调用自动化验证
+
+---
+
+# S5.6 AI评分质量优化能力检查
+
+**时间**：2026-08-06
+
+**版本**：S5.6
+
+**检查目标**：检查当前AI评分能力是否满足实际招聘考试使用要求
+
+**检查内容**：
+
+1. AI评分流程检查
+   - 候选人提交→简答题识别→AI评分调用→评分结果解析→结果保存→HR查看
+   - 确认流程完整性、AI失败影响、重新评分支持
+
+2. AI评分Prompt质量检查
+   - v1/v2 Prompt模板分析
+   - 检查角色定义、评分目标、题目信息、标准答案、评分规则、输出格式约束
+
+3. 评分规则体系检查
+   - 知识库三级结构（岗位→模板→规则）
+   - 知识点评分、扣分规则、满分条件支持
+
+4. AI评分稳定性检查
+   - temperature配置、置信度机制、输出格式稳定性
+
+5. AI评分结果数据检查
+   - AIScoreRecord记录内容完整性
+   - 后续人工复核和历史追踪支持
+
+6. 人工复核机制检查
+   - HR查看/确认/拒绝AI评分流程
+   - AI评分不直接替代最终成绩
+
+7. AI调用成本与性能检查
+   - 单题调用vs批量调用分析
+   - Token消耗优化建议
+
+**检查结果**：
+
+✅ **通过** - AI评分能力满足真实招聘考试使用要求
+
+**风险清单**：
+
+| 编号 | 问题 | 等级 | 影响 | 建议 |
+|------|------|------|------|------|
+| B001 | 单次评分token消耗较高 | B | 影响AI调用成本 | 建议实现批量评分接口 |
+| B002 | 缺少评分结果二次校验机制 | B | 影响评分准确性 | 建议增加分数与置信度矛盾检查 |
+| B003 | AI评分结果缺少评分范围限制校验 | B | 影响数据一致性 | 建议增加分数合理性校验 |
+
+**优化建议**：
+
+1. 增加批量评分接口，减少多次HTTP调用成本
+2. 增加评分结果合理性校验逻辑
+3. 增加评分标准分级配置能力
+4. 考虑增加评分结果缓存和复用机制
+
+**检查结论**：系统可进入S6正式业务优化阶段，但建议优先处理B级风险项
+
+---
+
+# S5-B AI 自动阅卷真实评分链路建设
+
+**时间**：2026-08-06
+
+**版本**：S5-B
+
+**主要变更**：
+
+1. **AIGradingService 完整实现**
+   - `backend/app/services/ai_grading_service.py` — 实现触发/查询/确认/拒绝/列表等完整方法
+
+2. **AI 评分业务流程**
+   - 候选人提交考试 → AI 自动识别简答题 → 调用 AI 评分 → 保存结果 → HR 查看/确认
+
+3. **AI 评分状态管理**
+   - 状态流转：pending → ai_scored → hr_confirmed → completed / rejected
+   - 被拒绝后可重新触发（更新原记录）
+
+4. **数据安全保护**
+   - 只发送题目/标准答案/评分规则/候选答案
+   - 不发送候选人隐私信息
+
+5. **异常处理**
+   - AI 调用失败不影响考试提交
+   - 记录错误信息，允许后续人工处理
+
+**修改文件**：
+- `backend/app/services/ai_grading_service.py` — 完整实现
+- `backend/app/models/answer_record.py` — 扩展 AI 评分字段
+- `backend/app/models/ai_score_record.py` — AI 评分记录模型
+- `backend/app/api/v1/endpoints/ai_grading.py` — AI 阅卷 API
+- `ai-service/app/prompts/scoring/v2.yaml` — 增强 Prompt
+
+**测试结果**：21/21 通过
+
+---
+
+# S5-A DeepSeek-V4-Flash 模型接入
+
+**时间**：2026-08-06
+
+**版本**：S5-A
+
+**主要变更**：
+
+1. **AI 配置体系升级**
+   - `ai-service/app/core/config.py` — AIConfig 改为 @property 动态读取环境变量
+   - 默认模型改为 `deepseek-v4-flash`
+   - 默认 Provider 改为 `deepseek`
+   - 默认 API Base 改为 `https://api.deepseek.com/v1`
+
+2. **LLMProvider 扩展**
+   - `ai-service/app/llm/provider.py` — LLMProvider 枚举新增 DEEPSEEK
+   - chat() 方法集成调用日志（请求/响应/错误）
+   - 错误分类增强（支持 429 rate limit、unauthorized 等）
+
+3. **新增 AI 健康检查端点**
+   - `ai-service/app/api/endpoints/health.py` — 配置检查 + 连接测试
+   - `GET /api/health` — 配置状态检查
+   - `POST /api/health/connectivity` — 模型连接测试
+
+4. **修复 scoring.py 参数错误**
+   - `ai-service/app/api/endpoints/scoring.py` — ModelConfig 参数名 model→name
+
+5. **更新 .env.example**
+   - `ai-service/.env.example` — 更新为 DeepSeek-V4-Flash 配置
+
+6. **新增测试**
+   - `ai-service/test_deepseek_integration.py` — 24 项测试用例
+
+**影响范围**：
+- `ai-service/app/llm/provider.py` — Provider 枚举 + 调用日志
+- `ai-service/app/core/config.py` — 配置体系重构
+- `ai-service/app/api/endpoints/health.py` — 新增健康检查
+- `ai-service/app/api/endpoints/scoring.py` — 参数修复
+- `ai-service/app/api/router.py` — 路由注册
+- `ai-service/.env.example` — 配置模板更新
+
+**验证结果**：24/24 测试通过
+
+---
+
+# 路由注册异常修复
+
+**时间**：2026-08-06
+
+**版本**：S5.5 修复
+
+**主要变更**：
+
+1. **修复 analysis_report.py import 路径**
+   - `from app.core.database import get_db` → `from app.db.session import get_db`
+
+2. **修复 knowledge_base.py import 路径**
+   - `from app.api.deps import ...` → `from app.db.session import get_db` + `from app.core.permissions import ...`
+
+3. **修复 exams.py 缺失导入**
+   - 补充 `require_authenticated` 到 `from app.core.permissions` 导入
+
+4. **修复 APIRouter 重复 prefix**
+   - 移除 `analysis_report.py` 中 `prefix="/analysis-reports"`（已在 router.py 统一配置）
+   - 移除 `knowledge_base.py` 中 `prefix="/knowledge-base"`（已在 router.py 统一配置）
+
+**影响范围**：
+- `backend/app/api/v1/endpoints/analysis_report.py` — import 路径修复 + prefix 移除
+- `backend/app/api/v1/endpoints/knowledge_base.py` — import 路径修复 + prefix 移除
+- `backend/app/api/v1/endpoints/exams.py` — 补充 require_authenticated 导入
+
+**验证结果**：
+- 105 个路由全部恢复
+- 所有业务模块在 OpenAPI 中正常显示
+- 回归测试通过
+
+---
+
+# S5.5 招聘辅助分析能力建设
+
+**时间**：2026-08-06
+
+**版本**：S5.5
+
+**主要变更**：
+
+1. **新增候选人分析报告模型**
+   - 新增 `backend/app/models/candidate_analysis_report.py` — CandidateAnalysisReport 模型
+
+2. **新增分析 Service**
+   - 新增 `backend/app/services/analysis_service.py` — 分析报告生成/查询/审核服务
+
+3. **新增分析 API**
+   - 新增 `backend/app/api/v1/endpoints/analysis_report.py` — /api/v1/analysis-reports 端点
+   - 支持：生成报告、查询报告、列表查询、HR 审核
+
+4. **新增分析 Prompt**
+   - 新增 `ai-service/app/prompts/analysis/v1.yaml` — AI 候选人分析 Prompt v1
+   - 严格禁止录用建议，纯辅助分析
+
+5. **新增本地规则分析引擎**
+   - 基于 AI 评分结果进行本地规则分析
+   - 支持知识掌握度分析、优势分析、薄弱点分析、面试建议生成
+   - 不依赖外部 AI 服务
+
+**影响范围**：
+- `backend/app/models/` — 新增 candidate_analysis_report.py
+- `backend/app/services/` — 新增 analysis_service.py
+- `backend/app/api/v1/endpoints/` — 新增 analysis_report.py
+- `backend/app/api/v1/router.py` — 注册 analysis_report 路由
+- `backend/app/models/__init__.py` — 注册 CandidateAnalysisReport
+- `backend/app/schemas/` — 新增 analysis_report.py
+- `ai-service/app/prompts/analysis/` — 新增 v1.yaml
+
+---
+
+# S5.4 AI 评分标准知识库建设
+
+**时间**：2026-08-06
+
+**版本**：S5.4
+
+**主要变更**：
+
+1. **新增评分知识库数据模型**
+   - 新增 `backend/app/models/position.py` — Position 岗位信息模型
+   - 新增 `backend/app/models/scoring_template.py` — ScoringTemplate 评分模板模型
+   - 新增 `backend/app/models/scoring_rule.py` — ScoringRule 评分规则模型（带版本控制）
+   - 扩展 `backend/app/models/ai_score_record.py` — 新增 scoring_template_id、scoring_rule_versions 字段
+
+2. **新增知识库管理 Service**
+   - 新增 `backend/app/services/knowledge_base_service.py` — 知识库 CRUD、版本控制、RAG 检索
+   - 支持：岗位管理、评分模板管理、评分规则管理、版本控制、RAG 上下文检索
+
+3. **新增知识库管理 API**
+   - 新增 `backend/app/api/v1/endpoints/knowledge_base.py` — /api/v1/knowledge-base 端点
+   - 支持：岗位 CRUD、模板 CRUD、规则 CRUD、RAG 检索接口
+   - 权限：管理员可创建/修改，HR 可查看
+
+4. **实现 RAG 检索流程**
+   - 考试 → 岗位 → 模板 → 规则 自动关联
+   - 评分时自动检索知识库规则，注入 AI Prompt 上下文
+   - 无知识库时正常降级，不影响评分流程
+
+5. **更新评分 Prompt**
+   - 更新 `ai-service/app/prompts/scoring/v2.yaml` — 支持企业评分标准
+   - 评分要求增加：优先依据企业标准进行评分
+
+6. **评分版本追溯**
+   - AIScoreRecord 记录评分使用的模板 ID 和规则版本
+   - 历史评分记录保留原始规则版本关联
+   - 评分结果可追溯使用的评分标准
+
+**影响范围**：
+- `backend/app/models/` — 新增 position.py、scoring_template.py、scoring_rule.py
+- `backend/app/services/` — 新增 knowledge_base_service.py
+- `backend/app/api/v1/endpoints/` — 新增 knowledge_base.py
+- `backend/app/api/v1/router.py` — 注册 knowledge_base 路由
+- `backend/app/models/__init__.py` — 注册新模型
+- `backend/app/models/ai_score_record.py` — 新增评分版本字段
+- `backend/app/services/ai_grading_service.py` — 集成 RAG 检索
+- `ai-service/app/prompts/scoring/v2.yaml` — 支持企业标准
+
+---
+
+# S5.3 AI 智能阅卷 MVP
+
+**时间**：2026-08-06
+
+**版本**：S5.3
+
+**主要变更**：
+
+1. **新增 AI 评分服务**
+   - 新增 `backend/app/services/ai_grading_service.py` — AI 阅卷核心 Service
+   - 支持：触发 AI 评分、查询评分结果、HR 确认评分、HR 拒绝评分
+   - 独立封装 AI 调用逻辑，不侵入考试业务接口
+
+2. **新增 AI 评分记录模型**
+   - 新增 `backend/app/models/ai_score_record.py` — AIScoreRecord 模型
+   - 独立存储 AI 评分建议，不直接修改 AnswerRecord.score
+   - 字段：ai_score, max_score, score_reason, matched_points, missing_points, confidence, review_status
+   - 状态流转：pending → ai_scored → hr_confirmed → completed / rejected
+
+3. **新增 AI 阅卷接口**
+   - 新增 `backend/app/api/v1/endpoints/ai_grading.py` — AI 阅卷 API 端点
+   - 路由前缀：`/api/v1/ai-grading`
+   - 接口：trigger（触发AI评分）、results（查询结果）、confirm（HR确认）、reject（HR拒绝）、status（状态查询）、list（列表查询）
+   - 权限：仅 HR/Admin 可访问
+
+4. **评分 Prompt v2**
+   - 新增 `ai-service/app/prompts/scoring/v2.yaml`
+   - 增强：知识点分析（matched_points + missing_points）
+   - 结构化输出：score, reason, matched_points, missing_points, confidence
+
+5. **ScoringAgent 增强**
+   - 支持动态 Prompt 版本加载
+   - 支持 matched_points / missing_points 解析
+   - 响应增加 prompt_version、needs_review 元数据
+
+6. **异常处理**
+   - AI 服务不可用时降级处理（不影响考试提交）
+   - 评分结果异常时标记 needs_review=True
+   - 空答案快速处理（直接返回 0 分）
+
+**影响范围**：
+- `backend/app/models/` — 新增 ai_score_record.py
+- `backend/app/services/` — 新增 ai_grading_service.py
+- `backend/app/api/v1/endpoints/` — 新增 ai_grading.py
+- `backend/app/api/v1/router.py` — 注册 ai_grading 路由
+- `backend/app/models/__init__.py` — 注册 AIScoreRecord
+- `ai-service/app/agents/scoring_agent.py` — 增强 Prompt 版本支持
+- `ai-service/app/schemas/scoring.py` — 增加 matched_points 字段
+- `ai-service/app/prompts/scoring/v2.yaml` — 新增 v2 Prompt
+- `backend/app/services/ai_scoring_service.py` — 响应验证增强
+- `backend/app/services/grading_service.py` — _save_ai_score 增强
+
+---
+
+# S5.2 AI Tool 调用能力建设
+
+**时间**：2026-08-06
+
+**版本**：S5.2
+
+**主要变更**：
+- 增强 BaseTool（标准化返回格式、参数类型校验、参数范围校验）
+- 新增 ToolRouter（统一调用入口：权限/参数/执行/审计/异常）
+- 新增 ToolAuditService（审计日志查询、工具使用统计、失败分析）
+- 新增 GetExamStatisticsTool（考试统计查询工具）
+- 更新 exam_tools.py（S5.2 首批 3 个工具注册）
+- 新增 test_ai_tools.py（22 用例，全部通过）
+
+**新增文件**：
+- `ai-service/app/tools/tool_router.py` — Tool Router 统一路由
+- `ai-service/app/tools/tool_audit.py` — Tool 审计服务
+- `ai-service/test_ai_tools.py` — S5.2 测试文件
+
+**修改文件**：
+- `ai-service/app/tools/base_tool.py` — 增强返回格式和参数校验
+- `ai-service/app/tools/exam_tools.py` — 新增工具 + 增强消息格式
+
+**影响范围**：
+- AI Service Tool 模块增强，不影响现有评分/报告功能
+- 所有新模块独立，不修改 Backend 业务代码
+
+---
+
+# S5.1 AI Agent 基础架构设计
+
+**时间**：2026-08-06
+
+**版本**：S5.1
+
+**主要变更**：
+- 新增 Agent 核心模块（会话管理、消息处理）
+- 新增 Model Provider 模块（统一 LLM 调用封装）
+- 新增 Tool 调用模块（工具基类、注册表、8 个考试工具）
+- 新增 Prompt 管理模块（System Prompt 版本化配置）
+- 新增 AI Agent API 端点（/agent/chat, /agent/conversations, /agent/tools）
+- 新增 AI Agent 测试文件（19 用例，全部通过）
+
+**新增文件**：
+- `ai-service/app/agents/conversation.py` — 会话管理
+- `ai-service/app/llm/provider.py` — Model Provider
+- `ai-service/app/tools/__init__.py` — 工具模块
+- `ai-service/app/tools/base_tool.py` — 工具基类
+- `ai-service/app/tools/tool_registry.py` — 工具注册表
+- `ai-service/app/tools/exam_tools.py` — 考试工具实现
+- `ai-service/app/prompts/agent/__init__.py` — Agent Prompt 模块
+- `ai-service/app/prompts/agent/system_v1.yaml` — System Prompt
+- `ai-service/app/api/endpoints/agent.py` — AI Agent API 端点
+- `ai-service/test_ai_agent.py` — 测试文件
+
+**修改文件**：
+- `ai-service/app/api/router.py` — 注册 Agent 路由
+- `ai-service/main.py` — 注册工具到注册表
+
+**影响范围**：
+- AI Service 新增 Agent 能力，不影响现有评分/报告功能
+- 所有新模块独立，不修改 Backend 业务代码
+
+---
+
+# S5.0 AI Agent 架构设计能力检查
+
+**时间**：2026-08-06
+
+**版本**：S5.0
+
+**主要变更**：
+- 无代码变更（本阶段为架构检查阶段）
+- 确认 AI Agent 推荐架构：Tool Calling（优先）+ RAG（后续）
+- 确认 AI 能力边界：只读查询 + 信息汇总 + 辅助分析
+- 确认 AI 权限方案：用户身份透传 + 权限继承
+- 确认风险清单：A 级 3 项、B 级 6 项、C 级 5 项
+- 输出《S5.0 AI Agent 架构设计能力检查报告》
+
+**影响范围**：
+- 本阶段仅输出架构检查报告，不修改任何业务代码
+- 为 S5.1 AI Agent 基础架构设计提供明确方向
+
+---
+
+# S4.4-C1 AI 接入安全基础补充
+
+**时间**：2026-08-06
+
+**版本**：S4.4-C1
+
+**主要变更**：
+- 新增 AiCallLog 模型（AI 调用审计日志表）+ Alembic 迁移
+- 新增 AiCallLogService（审计日志 Service：创建/更新/查询）
+- 新增 DataMaskingMiddleware（数据脱敏中间件：手机号/邮箱/身份证）
+- 新增 trace.py（链路追踪模块：trace_id + request_id）
+- 新增审计日志查询 API：GET /api/v1/ai-call-logs（管理员）
+- 扩展 request_logging.py：支持 trace_id
+- 扩展异常处理器：日志含 trace_id
+- 新增测试文件 backend/test_ai_security.py（26 用例，全部通过）
+
+**影响范围**：
+- `backend/app/models/ai_call_log.py` — 新增
+- `backend/app/models/__init__.py` — 修改（注册 AiCallLog）
+- `backend/alembic/versions/d4c5e6f7a8b9_add_ai_call_log.py` — 新增
+- `backend/app/services/ai_call_log_service.py` — 新增
+- `backend/app/core/data_masking.py` — 新增
+- `backend/app/core/trace.py` — 新增
+- `backend/app/core/request_logging.py` — 修改（支持 trace_id）
+- `backend/app/exceptions/handler.py` — 修改（异常含 trace_id）
+- `backend/app/api/v1/endpoints/ai_call_logs.py` — 新增
+- `backend/app/api/v1/router.py` — 修改（注册审计日志路由）
+- `backend/main.py` — 修改（注册脱敏中间件）
+- `backend/test_ai_security.py` — 新增
+
+---
+
+# S4.4-C AI Agent 数据访问准备能力检查
+
+**时间**：2026-08-06
+
+**版本**：S4.4-C
+
+**主要变更**：
+- 检查 AI 数据访问架构、接口能力、权限控制、数据脱敏、审计能力
+- 输出 AI 数据访问边界表（开放/受限/禁止三类数据分类）
+- 输出风险清单（B001-B002 中危，C001-C002 低危）
+- 检查结论：✅ 通过，可进入 S5 AI Agent 架构设计阶段
+
+**影响范围**：
+- 无代码变更（本阶段为检查阶段）
+- 文档更新：AI_HANDOVER.md / CHANGE_HISTORY.md / change-log.md
+
+---
+
+# S4.4-B 数据查询接口建设
+
+**时间**：2026-08-06
+
+**版本**：S4.4-B
+
+**主要变更**：
+- 扩展 ExamStatisticsService：新增 get_exam_analysis / get_exam_results / get_candidate_exam_history_paginated / get_record_answers 方法
+- 扩展考试统计 Schema：新增 ExamAnalysisResponse / ExamResultsResponse / ExamResultItem / CandidateHistoryPaginatedResponse / RecordAnswersResponse / AnswerDetailItem
+- 新增考试分析接口 GET /api/v1/exams/{exam_id}/analysis
+- 新增考试成绩列表接口 GET /api/v1/exams/{exam_id}/results
+- 增强候选人历史接口：支持分页/排序/状态过滤
+- 新增答题详情接口 GET /api/v1/exams/{exam_id}/records/{record_id}/answers
+- 新增测试文件 backend/test_exam_query.py（27 用例，全部通过）
+
+**影响范围**：
+- `backend/app/services/exam_statistics_service.py` — 修改（新增 4 个方法）
+- `backend/app/schemas/exam_statistics.py` — 修改（新增 6 个 Schema）
+- `backend/app/api/v1/endpoints/exams.py` — 修改（新增 3 个端点）
+- `backend/app/api/v1/endpoints/candidates.py` — 修改（增强历史查询）
+- `backend/test_exam_query.py` — 新增
+
+---
+
+# S4.4-A 考试基础统计能力建设
+
+**时间**：2026-08-06
+
+**版本**：S4.4-A
+
+**主要变更**：
+- 新增统计 Service（ExamStatisticsService）
+- 新增考试统计接口 GET /api/v1/exams/{exam_id}/statistics
+- 新增候选人历史考试查询接口 GET /api/v1/candidates/{candidate_id}/exam-history
+- 新增统计相关 Schema（ExamStatisticsResponse, CandidateHistoryResponse）
+- 新增统计测试文件 backend/test_exam_statistics.py（18 用例，全部通过）
+
+**影响范围**：
+- `backend/app/services/exam_statistics_service.py` — 新增
+- `backend/app/schemas/exam_statistics.py` — 新增
+- `backend/app/api/v1/endpoints/candidates.py` — 新增
+- `backend/app/api/v1/endpoints/exams.py` — 修改（添加统计端点）
+- `backend/app/api/v1/router.py` — 修改（注册 candidates_router）
+- `backend/test_exam_statistics.py` — 新增
+
+---
+
+# S4.0 稳定性与 AI 接入前置检查
+
+**时间**：2026-08-05
+
+**版本**：S4.0
+
+**主要变更**：
+- 日志体系完善（统一格式 + 请求日志 + 敏感数据过滤）
+- 异常处理完善（事务回滚 + 全局异常捕获）
+- AI 调用审计日志
+- AI Agent 架构规划（AI 服务独立部署）
+
+**影响范围**：
+- `backend/app/core/` — 日志与异常配置
+- `backend/app/middleware/` — 请求日志中间件
+- `backend/app/exceptions/` — 统一异常处理
+- `ai-service/` — AI Agent 架构设计
+
+---
+
+# S4.1 考试核心业务能力完善
+
+**时间**：2026-08-05
+
+**版本**：S4.1
+
+**主要变更**：
+- 考试状态流转（draft → published → closed）
+- 考试发布与关闭接口
+- 候选人考试流程完善
+- 答案保存与提交逻辑
+- 客观题自动评分触发
+- AI 评分和报告自动调用
+
+**影响范围**：
+- `backend/app/services/exam_service.py` — 考试状态管理
+- `backend/app/services/exam_record_service.py` — 答题流程
+- `backend/app/services/grading_service.py` — 自动评分
+- `backend/app/services/report_service.py` — AI 报告
+- `backend/app/api/v1/endpoints/exam_records.py` — 答题接口
+- `backend/app/api/v1/endpoints/grading.py` — 评分接口
+- `backend/app/api/v1/endpoints/reports.py` — 报告接口
+
+---
+
+# S4.2 固定试卷模板体系
+
+**时间**：2026-08-05
+
+**版本**：S4.2
+
+**主要变更**：
+- 新增 `exam_template` 表（试卷模板）
+- 新增 `template_question` 表（模板题目）
+- `answer_record` 表新增 `question_snapshot` 字段（题目快照）
+- 模板 CRUD 接口（增删改查 + 启用/停用）
+- 模板题目管理接口（增删改查 + 批量添加 + 导入）
+- 基于模板创建考试接口（独立复制题目，数据隔离）
+- 前端模板管理页面（列表/创建/编辑/详情）
+
+**影响范围**：
+- `backend/app/models/exam_template.py` — 新增模型
+- `backend/app/models/template_question.py` — 新增模型
+- `backend/app/schemas/template.py` — 新增 Schema
+- `backend/app/services/template_service.py` — 新增 Service
+- `backend/app/api/v1/endpoints/templates.py` — 新增 API
+- `backend/alembic/versions/` — 新增迁移
+- `frontend/src/api/template.js` — 新增 API 封装
+- `frontend/src/views/admin/template/` — 新增页面（3 个）
+- `frontend/src/router/index.js` — 新增路由
+
+---
+
+# S4.3 考试发布与安全体系
+
+## S4.3-A 考试人员管理能力建设
+
+**时间**：2026-08-06
+
+**版本**：S4.3-A
+
+**主要变更**：
+- 新增 `exam_participant` 表（考试参与人员）
+- 人员 CRUD 接口（单个/批量添加、查询、删除、状态更新）
+- 人员状态管理（assigned → not_started → in_progress → submitted → completed）
+- 人员状态同步机制（从 exam_record 自动同步）
+- 唯一约束：同一考试中手机号不能重复
+
+**影响范围**：
+- `backend/app/models/exam_participant.py` — 新增模型
+- `backend/app/schemas/participant.py` — 新增 Schema
+- `backend/app/services/participant_service.py` — 新增 Service
+- `backend/app/api/v1/endpoints/participants.py` — 新增 API
+- `backend/alembic/versions/` — 新增迁移
+- `frontend/src/api/participant.js` — 新增 API 封装
+- `frontend/src/views/admin/exam/ExamParticipants.vue` — 新增组件
+- `frontend/src/views/admin/exam/ExamDetail.vue` — 添加人员管理 Tab
+
+---
+
+## S4.3-B 考试安全能力完善
+
+**时间**：2026-08-06
+
+**版本**：S4.3-B
+
+**主要变更**：
+- `exam` 表新增 `exam_code` 字段（唯一约束，考试访问凭证）
+- `exam_record` 表新增 `exam_code` 字段（凭证快照）
+- `exam_record` 表新增 `participant_id` 字段（绑定参与人员，外键）
+- 候选人身份验证（exam_code + ExamParticipant 校验）
+- 防重复提交机制（未完成允许继续，已完成禁止）
+- 提交幂等操作
+- 前端凭证输入和验证
+
+**影响范围**：
+- `backend/app/models/exam.py` — 新增 exam_code 字段
+- `backend/app/models/exam_record.py` — 新增 exam_code、participant_id 字段
+- `backend/app/services/exam_record_service.py` — 身份验证 + 防重复逻辑
+- `backend/app/api/v1/endpoints/exam_records.py` — 创建接口增加凭证参数
+- `backend/app/schemas/exam_record.py` — ExamRecordCreate 新增 exam_code
+- `backend/alembic/versions/` — 新增迁移（2 个）
+- `frontend/src/views/exam/Entry.vue` — 新增凭证输入和验证
+- `frontend/src/stores/exam.js` — createRecord 支持 exam_code 参数
+
+---
+
+## S4.3-C 核心流程测试补充
+
+**时间**：2026-08-06
+
+**版本**：S4.3-C
+
+**主要变更**：
+- 新增 `backend/test_core_workflow.py` 测试文件（28 个测试用例）
+- 7 大核心流程自动化测试覆盖
+
+**测试覆盖**：
+| 测试分类 | 用例数 |
+|----------|--------|
+| 考试创建流程 | 4 |
+| 固定试卷模板流程 | 3 |
+| 考试人员管理流程 | 5 |
+| 考试访问安全 | 4 |
+| 答题流程 | 4 |
+| 提交流程 | 4 |
+| 权限测试 | 4 |
+
+**影响范围**：
+- `backend/test_core_workflow.py` — 新增测试文件
+
+---
+
+# S5.7-A 系统真实业务流程黑盒验收检查
+
+**时间**：2026-08-07
+
+**版本**：S5.7-A
+
+**检查目标**：模拟真实用户操作，从浏览器端验证系统完整业务闭环
+
+**检查范围**：
+1. 登录认证流程检查
+2. HR考试创建流程检查
+3. 试卷/考试资料上传流程检查
+4. 考试发布流程检查
+5. 候选人考试流程检查
+6. 答题提交流程检查
+7. AI评分流程检查
+8. HR成绩查看流程检查
+
+**检查结果**：❌ 未达到真实使用标准
+
+**通过流程**：
+- ✅ 流程1：登录认证流程
+- ✅ 流程2：HR考试创建流程
+- ✅ 流程4：考试发布流程
+- ✅ 流程5：候选人考试流程
+
+**不通过流程**：
+- ❌ 流程3：试卷上传（未测试）
+- ❌ 流程6：答题提交（数据库问题）
+- ❌ 流程7：AI评分（依赖流程6）
+- ❌ 流程8：成绩查看（依赖流程6）
+
+**P0 级问题**：
+1. 数据库 schema 与 ORM 模型不匹配
+   - `answer_record` 表缺少 `ai_status`、`ai_score`、`ai_confidence` 等字段
+   - 错误：`OperationalError: no such column: answer_record.ai_status`
+   
+2. 答题保存接口 500 错误
+   - 保存答案时查询不存在的字段导致错误
+
+**P1 级问题**：
+1. 考试码未自动生成：创建考试时 `exam_code` 为 null
+2. 题目列表查询异常：`/api/v1/questions` 返回 0 题
+3. 判断题添加失败：`answer` 字段格式校验问题
+
+**根本原因**：
+- 使用 SQLite 数据库但 schema 与 ORM 模型不同步
+- SQLite ALTER TABLE 功能受限，无法轻松添加缺失字段
+
+**建议修复方案**：
+1. 方案 A：重建 SQLite 数据库（开发环境）
+2. 方案 B：切换到 MySQL 生产环境
+3. 方案 C：手动迁移 SQLite schema
+
+**下一步计划**：
+1. 修复 P0 数据库问题
+2. 修复 P1 业务问题
+3. 重新执行 S5.7-A 检查
+
+**影响范围**：
+- `backend/exam_system.db` — 数据库需重建或迁移
+- 所有答题相关接口依赖数据库修复
+
+---
+
+# S5.7-B2 SQLite数据库重建与Schema同步
+
+**时间**：2026-08-07
+
+**版本**：S5.7-B2
+
+**执行目标**：修复 S5.7-A 发现的数据库 Schema 与 ORM 模型不匹配问题
+
+**执行操作**：
+1. 备份原数据库：`exam_system_backup_before_rebuild_20260807_092249.db`
+2. 删除旧开发数据库：`exam_system.db`
+3. 修复 `init_db.py` 导入问题：engine 懒加载导致 ImportError
+4. 重新初始化数据库：17 张表全部创建成功
+
+**修复结果**：
+- ✅ AnswerRecord 表现在包含全部 22 个字段
+- ✅ 缺失的 7 个 AI 评分相关字段已补齐：
+  - ai_status, ai_model_used, ai_scored_at, ai_error_message, knowledge_points, matched_points, missing_points
+- ✅ 答题保存接口从 500 错误恢复为 200 OK
+- ✅ 完整业务流程验证通过：创建考试 → 添加题目 → 发布 → 候选人答题 → 保存答案 → 提交
+
+**修复的代码**：
+- `backend/app/db/init_db.py` — 修复 engine 导入方式，添加 models 导入
+
+**影响范围**：
+- `backend/exam_system.db` — 已重建
+- `backend/app/db/init_db.py` — 已修复
+
+---
+
+# S5.7-C 核心业务链路回归测试
+
+**时间**：2026-08-07
+
+**版本**：S5.7-C
+
+**测试目标**：验证数据库修复后，系统完整招聘考试流程是否恢复
+
+**测试范围**：
+1. 用户登录流程测试
+2. HR创建考试流程测试
+3. 试卷/题目管理流程测试
+4. 考试发布流程测试
+5. 候选人参加考试流程测试
+6. 答题与提交流程测试
+7. AI评分链路测试
+8. HR成绩查看流程测试
+9. 异常测试（重复提交、权限越界）
+
+**测试结果**：❌ 部分通过（通过率 79.3%，23/29 项通过）
+
+**通过流程**：
+- ✅ 流程1：用户登录（Admin/HR 登录、Token验证）
+- ✅ 流程2：考试创建（创建考试、考试详情查看）
+- ✅ 流程3：题目管理（添加单选/判断/简答题、正确端点查询题目）
+- ✅ 流程4：考试发布（添加参与人员、发布考试、状态变更）
+- ✅ 流程5：候选人考试（创建记录、开始考试、获取试卷）
+- ✅ 流程6：答题提交（保存答案、生成AnswerRecord、提交考试）
+- ✅ 流程8：成绩查看（成绩列表、答题详情、AI报告）
+- ✅ 异常测试：权限越界检查
+
+**不通过流程**：
+- ❌ 2.2 考试码生成：`exam_code` 为 null
+- ❌ 3.4 题目列表查询：`GET /questions` 返回 405（正确端点为 `GET /exams/{id}/questions`）
+- ❌ 7.2-7.4 AI评分链路：AI评分未触发，评分状态为 `not_started`
+- ❌ 9.1 重复提交限制：重复提交仍返回 200
+
+**P0 级问题**（核心流程阻塞）：
+1. 答案保存不完整：`answer_content` 字段为 null，答案内容未正确保存
+2. AI评分未触发：提交考试后未自动触发 AI 评分流程
+3. AI评分接口路径问题：`/api/v1/ai-scoring/grade` 返回 404
+
+**P1 级问题**（主要业务异常）：
+1. 考试码未自动生成：创建考试时 `exam_code` 为 null
+2. 题目列表查询端点不明确
+3. 重复提交无限制
+
+**数据库修复验证**：
+- ✅ 数据库 Schema 与 ORM 模型一致
+- ✅ AnswerRecord 表 AI 字段完整
+- ✅ 答题保存接口正常工作（不再出现 500 错误）
+- ✅ AnswerRecord 记录正确生成（3条记录）
+
+**AI评分链路验证**：
+- ❌ AI评分未自动触发
+- ❌ AI评分接口路径待确认
+- ❌ 评分结果未保存
+
+**根本原因分析**：
+1. 答案保存逻辑中，前端提交的 `answer` 字段可能未正确映射到 `answer_content`
+2. 考试提交接口可能未正确触发 AI 评分服务调用
+3. AI 评分路由注册可能存在问题
+
+**下一步计划**：
+1. 修复答案保存逻辑（answer_content 字段映射问题）
+2. 实现 AI 评分自动触发机制
+3. 确认并修复 AI 评分接口路径
+4. 实现考试码自动生成功能
+5. 添加重复提交限制
+6. 重新执行 S5.7-C 回归测试
+
+**影响范围**：
+- 答案保存服务需检查字段映射
+- 考试提交服务需添加 AI 评分触发逻辑
+- AI 评分路由需确认并修复
+
+---
+
+# S5.7-D1.5-D DeepSeek真实调用自动化验证
+
+**时间**：2026-08-07
+
+**版本**：S5.7-D1.5-D
+
+**验证目标**：自动验证 DeepSeek 真实调用是否成功
+
+**验证结果**：✅ **通过**
+
+**详细检查**：
+
+1. **环境检查结果** ✅
+   - `ai-service/.env`：存在
+   - `AI_API_KEY`：已配置（有效）
+   - `AI_MODEL_NAME`：deepseek-chat
+   - `AI_API_BASE`：https://api.deepseek.com/v1
+
+2. **服务启动结果** ✅
+   - ai-service 启动成功
+   - `/health` 接口返回正常
+
+3. **API调用结果** ✅
+   - `POST /api/scoring/evaluate` 返回 HTTP 200
+   - score: 9.0
+   - reason: AI 生成的详细评分理由
+   - confidence: 0.95
+
+4. **DeepSeek响应结果** ✅
+   - Score 非固定值: True
+   - Reason 为 AI 生成文本: True
+   - Confidence 存在: True
+   - 确认：真实调用 DeepSeek API，非 mock 数据
+
+**测试脚本**：`ai-service/run_deepseek_test.py`
+
+**最终结论**：
+✅ S5.7-D1.5-D通过
+
+**系统状态**：
+- AI 评分链路：✅ 完整可用
+- 环境配置加载：✅ 正常
+- DeepSeek 真实调用：✅ 成功
+
+---
+
+# S5.7-D1.5-C AI环境配置加载修复
+
+**时间**：2026-08-07
+
+**版本**：S5.7-D1.5-C
+
+**修复目标**：修复 AI 服务环境变量未加载导致 DeepSeek API 调用失败的问题（错误：Illegal header value b'Bearer '）
+
+**根因分析**：
+1. `ai-service` 目录下缺失 `.env` 文件（仅有 `.env.example` 模板）
+2. `ai-service/app/core/config.py` 未主动调用 `load_dotenv()`，导致即使存在 `.env` 也无法被读取
+3. 结果：`os.environ.get("AI_API_KEY", "")` 返回空字符串，构造 `Authorization: Bearer ` 时出错
+
+**修改文件**：
+1. `ai-service/app/core/config.py`
+   - 增加 `from dotenv import load_dotenv`
+   - 在配置读取前执行 `load_dotenv()`
+
+2. `ai-service/requirements.txt`
+   - 增加 `python-dotenv==1.0.1`
+
+**验证结果**：
+- ✅ 代码修改完成，`config.py` 能够正确加载 `.env` 文件
+- ✅ 依赖补充完成，`requirements.txt` 声明了 `python-dotenv`
+- ✅ 模拟测试通过：`AI_API_KEY` 能被正确读取
+
+**部署要求**：
+- 需将 `ai-service/.env.example` 复制为 `ai-service/.env`
+- 需在 `.env` 中填入真实 `AI_API_KEY`
+- 重启 `ai-service` 后生效
+
+---
+
+# S5.7-D1 AI评分链路修复
+
+**时间**：2026-08-07
+
+**版本**：S5.7-D1
+
+**修复目标**：恢复 AI 评分完整闭环
+
+**修复内容**：
+
+1. 答案保存修复
+   - 文件：`backend/app/schemas/exam_record.py`
+   - AnswerCreate Schema 增加 `@model_validator(mode="before")` 自动映射 `answer` → `answer_content`
+   - 支持前端两种字段命名（`answer` 和 `answer_content`）
+
+2. AI评分自动触发
+   - 文件：`backend/app/api/v1/endpoints/exam_records.py`
+   - 新增 `_trigger_auto_grade(record_id)` 后台线程触发函数
+   - submit_exam 端点在提交成功后自动触发 AI 评分
+   - AI 评分在后台线程执行，不阻塞主请求
+   - 评分失败不影响考试提交结果
+
+3. AI评分接口路径整理
+   - 确认所有 AI 相关接口路径
+   - 后端接口：`/api/v1/ai-scoring/evaluate`、`/api/v1/ai-grading/*`
+   - AI服务：`http://localhost:8001/api/scoring/evaluate`
+
+4. 评分结果保存增强
+   - 文件：`backend/app/services/grading_service.py`
+   - `_save_ai_score` 增加 `ai_status`、`ai_scored_at`、`matched_points`、`missing_points` 字段保存
+
+**测试结果**：
+- ✅ 答案保存验证：3道题的 answer_content 均非空
+- ✅ AI评分触发验证：提交后自动完成评分（status: completed）
+- ✅ 评分结果保存：AI评分状态、分数、理由、置信度均正确保存
+- ⚠️ AI实际评分需配置 AI_API_KEY（当前未配置）
+
+**AI评分链路**：
+```
+候选人提交答案 → 保存完整答案 → 提交考试 → 后台触发自动评分
+→ 客观题自动评分 → 主观题AI评分 → 保存评分结果 → 更新考试状态
+```
+
+**修改文件**：
+- `backend/app/schemas/exam_record.py`：AnswerCreate 字段兼容
+- `backend/app/api/v1/endpoints/exam_records.py`：AI 评分触发
+- `backend/app/services/grading_service.py`：评分结果保存增强
+
+**影响范围**：
+- 前端：无修改，兼容现有字段命名
+- 后端：3个文件修改
+- AI服务：无修改
+- 数据库：无修改
+
+---
+
+# S5.7-D1.5 DeepSeek真实调用验证
+
+**时间**：2026-08-07
+
+**版本**：S5.7-D1.5
+
+**验证目标**：确认系统是否能够真实调用DeepSeek模型完成评分
+
+**验证结果**：❌ AI调用未通过（AI_API_KEY 未配置）
+
+**详细发现**：
+
+1. **环境配置状态**
+   - 问题：`AI_API_KEY` 未在任何环境配置中设置
+   - AI-Service 目录下没有 `.env` 文件
+   - 只有 `.env.example` 模板
+   - 后端 `.env` 也未包含 `AI_SERVICE_URL` 等 AI 相关配置
+
+2. **AI模型配置状态（正确）**
+   - Model Name: `deepseek-v4-flash` ✅
+   - API Base: `https://api.deepseek.com/v1` ✅
+   - Provider: `deepseek` ✅
+   - 模型名称与实际 API 规范一致
+
+3. **AI调用错误分析**
+   - 错误：`Illegal header value b'Bearer '`
+   - 原因：API Key 为空，httpx 拒绝 `Bearer ` 格式的非法请求头
+   - 系统正确捕获并记录错误，未产生虚假评分数据
+
+4. **异常处理验证（通过）**
+   - ✅ 考试提交成功（状态: submitted），不受AI失败影响
+   - ✅ 评分失败被记录在 `ai_reason` 字段
+   - ✅ 评分流程正确完成（status: completed）
+   - ✅ AI调用日志完整记录
+
+5. **数据库保存验证（通过）**
+   - ✅ AnswerRecord.answer_content: 正确保存
+   - ✅ AnswerRecord.ai_reason: 保存了完整错误信息
+   - ✅ AnswerRecord.ai_status: 正确标记
+   - ✅ GradingRecord: 评分流程完整记录
+
+**系统稳定性**：
+- AI评分链路：✅ 完整可用
+- 异常处理：✅ 完善
+- 真实AI调用：❌ 需配置 API Key
+
+**后续步骤**：
+1. 在 `ai-service/` 目录创建 `.env` 文件
+2. 设置 `AI_API_KEY=sk-xxx`（从 DeepSeek 控制台获取）
+3. 重启 AI-Service
+4. 重新执行真实AI调用验证

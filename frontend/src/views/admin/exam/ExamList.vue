@@ -51,7 +51,7 @@
         <el-table-column prop="duration_minutes" label="时长(分)" width="100" />
         <el-table-column prop="question_count" label="题目数" width="90" />
         <el-table-column prop="created_at" label="创建时间" width="170" />
-        <el-table-column label="操作" width="260" fixed="right">
+        <el-table-column label="操作" width="320" fixed="right">
           <template #default="{ row }">
             <el-button size="small" type="primary" link @click="goDetail(row.id)">查看</el-button>
             <el-button
@@ -75,6 +75,13 @@
               link
               @click="handleClose(row)"
             >关闭</el-button>
+            <el-button
+              v-if="row.status === 'closed'"
+              size="small"
+              type="success"
+              link
+              @click="handleRepublish(row)"
+            >再次发布</el-button>
             <el-button
               v-if="row.status === 'draft' || row.status === 'closed'"
               size="small"
@@ -173,6 +180,21 @@ async function handleClose(row) {
     await ElMessageBox.confirm(`确定关闭考试「${row.title}」吗？`, '关闭确认', { type: 'warning' })
     await examApi.closeExam(row.id)
     ElMessage.success('已关闭')
+    fetchList()
+  } catch (e) {
+    /* cancelled */
+  }
+}
+
+async function handleRepublish(row) {
+  try {
+    await ElMessageBox.confirm(
+      `确定重新发布考试「${row.title}」吗？重新发布后将保留原有题目和历史成绩。`,
+      '重新发布确认',
+      { type: 'warning' }
+    )
+    await examApi.publishExam(row.id)
+    ElMessage.success('重新发布成功')
     fetchList()
   } catch (e) {
     /* cancelled */

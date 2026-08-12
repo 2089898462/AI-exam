@@ -103,9 +103,11 @@ watch(visible, (val) => {
   emit('update:modelValue', val)
 })
 
-function handleFileChange(file) {
-  file.value = file.raw
-  result.value = null
+function handleFileChange(uploadFile) {
+  if (uploadFile && uploadFile.raw) {
+    file.value = uploadFile.raw
+    result.value = null
+  }
 }
 
 function handleExceed() {

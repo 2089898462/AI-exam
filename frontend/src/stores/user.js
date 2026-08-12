@@ -25,7 +25,9 @@ export const useUserStore = defineStore('user', {
     async login(credentials) {
       const res = await authApi.login(credentials)
       const token = res.data.access_token
+      const role = res.data.user?.role || ''
       auth.setToken(token)
+      auth.setRole(role)
       this.token = token
       await this.getUserInfo()
       return res
@@ -39,6 +41,12 @@ export const useUserStore = defineStore('user', {
       auth.removeToken()
       this.token = null
       this.userInfo = null
+    },
+    hasRole(role) {
+      return this.role === role
+    },
+    isAdminOrHR() {
+      return this.role === 'admin' || this.role === 'hr'
     },
   },
 })

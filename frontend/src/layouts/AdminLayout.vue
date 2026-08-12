@@ -21,6 +21,28 @@
           <el-menu-item index="/admin/exams">考试列表</el-menu-item>
           <el-menu-item index="/admin/exams/create">创建考试</el-menu-item>
         </el-sub-menu>
+        <el-sub-menu index="template">
+          <template #title>
+            <el-icon><Collection /></el-icon>
+            <span>试卷模板</span>
+          </template>
+          <el-menu-item index="/admin/templates">模板列表</el-menu-item>
+          <el-menu-item index="/admin/templates/create">创建模板</el-menu-item>
+        </el-sub-menu>
+        <el-sub-menu index="grading">
+          <template #title>
+            <el-icon><DataAnalysis /></el-icon>
+            <span>评分管理</span>
+          </template>
+          <el-menu-item index="/admin/grading">评分结果</el-menu-item>
+        </el-sub-menu>
+        <el-sub-menu index="report">
+          <template #title>
+            <el-icon><Files /></el-icon>
+            <span>AI 报告</span>
+          </template>
+          <el-menu-item index="/admin/reports">报告列表</el-menu-item>
+        </el-sub-menu>
       </el-menu>
     </el-aside>
 
@@ -29,7 +51,7 @@
         <div class="header-left">
           <el-breadcrumb separator="/">
             <el-breadcrumb-item :to="{ path: '/admin/exams' }">首页</el-breadcrumb-item>
-            <el-breadcrumb-item v-if="$route.meta.title && $route.name !== 'ExamList'">
+            <el-breadcrumb-item v-if="$route.meta.title && $route.name !== 'ExamList' && $route.name !== 'GradingResultList'">
               {{ $route.meta.title }}
             </el-breadcrumb-item>
           </el-breadcrumb>
@@ -62,7 +84,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { Reading, Document, User } from '@element-plus/icons-vue'
+import { Reading, Document, User, DataAnalysis, Files, Collection } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 
 const route = useRoute()

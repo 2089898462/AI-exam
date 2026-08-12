@@ -1,6 +1,7 @@
 """
 考试服务
 """
+import uuid
 from datetime import datetime
 
 from sqlalchemy import or_
@@ -8,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.exceptions import BusinessException, NotFoundException
 from app.models.exam import Exam
+from app.models.question import Question
 from app.models.user import User
 from app.services.base import BaseService
 
@@ -23,7 +25,17 @@ class ExamService(BaseService[Exam]):
         if exam.created_by != current_user.id:
             raise BusinessException(f"无权{action}此考试")
 
+    @staticmethod
+    def _generate_exam_code() -> str:
+        """生成唯一考试码"""
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        short_uuid = uuid.uuid4().hex[:8].upper()
+        return f"EXAM-{timestamp}-{short_uuid}"
+
     def create_exam(self, title: str, duration_minutes: int, created_by: int, **kwargs) -> Exam:
+        # 如果没有提供 exam_code，则自动生成
+        if not kwargs.get("exam_code"):
+            kwargs["exam_code"] = self._generate_exam_code()
         return self.create(
             title=title,
             duration_minutes=duration_minutes,
@@ -54,8 +66,8 @@ class ExamService(BaseService[Exam]):
         if not exam:
             raise NotFoundException("考试不存在")
         self._ensure_owner_or_admin(exam, current_user, "操作")
-        if exam.status != "draft":
-            raise BusinessException("只有草稿状态的考试才能发布")
+        if exam.status not in ["draft", "closed"]:
+            raise BusinessException("只有草稿或已关闭的考试才能发布")
         if not exam.questions:
             raise BusinessException("考试至少需要一道题目才能发布")
         exam.status = "published"
@@ -77,11 +89,68 @@ class ExamService(BaseService[Exam]):
         self.db.refresh(exam)
         return exam
 
+    def clone_exam(self, exam_id: int, current_user: User, new_title: str = None) -> Exam:
+        """复制考试为新实例（用于试卷复用）
+
+        Args:
+            exam_id: 原考试ID
+            current_user: 当前用户
+            new_title: 新考试标题（可选，默认在原标题后加"（副本）"）
+
+        Returns:
+            新的 Exam 实例
+        """
+        exam = self.get(exam_id)
+        if not exam:
+            raise NotFoundException("考试不存在")
+        self._ensure_owner_or_admin(exam, current_user, "复制")
+
+        # 只有已关闭的考试才能复制
+        if exam.status != "closed":
+            raise BusinessException("只有已关闭的考试才能复制复用")
+
+        # 创建新的 Exam 实例
+        new_exam = Exam(
+            title=new_title or f"{exam.title}（副本）",
+            exam_code=self._generate_exam_code(),
+            position=exam.position,
+            description=exam.description,
+            duration_minutes=exam.duration_minutes,
+            pass_score=exam.pass_score,
+            status="draft",
+            created_by=current_user.id,
+        )
+        self.db.add(new_exam)
+        self.db.flush()  # 获取新 ID
+
+        # 复制题目
+        for question in exam.questions:
+            new_question = Question(
+                exam_id=new_exam.id,
+                type=question.type,
+                content=question.content,
+                question_no=question.question_no,
+                category=question.category,
+                options=question.options,
+                answer=question.answer,
+                score=question.score,
+                sort_order=question.sort_order,
+            )
+            self.db.add(new_question)
+
+        self.db.commit()
+        self.db.refresh(new_exam)
+        return new_exam
+
     def get_exam_detail(self, exam_id: int) -> Exam:
         exam = self.get(exam_id)
         if not exam:
             raise NotFoundException("考试不存在")
         return exam
+
+    def get_by_code(self, exam_code: str) -> Exam | None:
+        """通过考试码查找考试"""
+        return self.db.query(Exam).filter(Exam.exam_code == exam_code).first()
 
     def list_exams(
         self,

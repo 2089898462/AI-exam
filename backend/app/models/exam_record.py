@@ -17,6 +17,10 @@ class ExamRecord(Base):
     exam_id: Mapped[int] = mapped_column(
         ForeignKey("exam.id"), nullable=False, index=True
     )
+    exam_code: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
+    participant_id: Mapped[int | None] = mapped_column(
+        ForeignKey("exam_participant.id"), nullable=True, index=True
+    )
     candidate_name: Mapped[str] = mapped_column(String(64), nullable=False)
     candidate_phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
     candidate_email: Mapped[str | None] = mapped_column(String(128), nullable=True)
@@ -44,6 +48,9 @@ class ExamRecord(Base):
     )
     ai_report = relationship(
         "AiReport", back_populates="exam_record", uselist=False, cascade="all, delete-orphan"
+    )
+    grading_record = relationship(
+        "GradingRecord", back_populates="exam_record", uselist=False, cascade="all, delete-orphan"
     )
 
     def __repr__(self):

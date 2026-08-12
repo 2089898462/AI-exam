@@ -29,6 +29,8 @@ request.interceptors.response.use(
     }
     const errorMessages = {
       400: res.message || '请求参数错误',
+      401: res.message || '未登录或登录已过期',
+      403: res.message || '没有操作权限',
       404: res.message || '资源不存在',
       422: res.message || '数据校验失败',
       500: res.message || '服务器内部错误',
@@ -38,6 +40,9 @@ request.interceptors.response.use(
     if (res.code === 401) {
       auth.removeToken()
       router.push('/login')
+    }
+    if (res.code === 403) {
+      router.push('/exam')
     }
     return Promise.reject(new Error(msg))
   },
@@ -49,6 +54,16 @@ request.interceptors.response.use(
       if (status === 401) {
         auth.removeToken()
         router.push('/login')
+        return Promise.reject(error)
+      }
+      if (status === 403) {
+        ElMessage.error(msg)
+        router.push('/exam')
+        return Promise.reject(error)
+      }
+      // 404 错误静默处理，不弹窗（交由组件自行处理）
+      if (status === 404) {
+        console.warn(`[404] ${error.config?.url}: ${msg}`)
         return Promise.reject(error)
       }
       if (status !== 422) {

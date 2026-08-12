@@ -4,8 +4,11 @@
 """
 from __future__ import annotations
 
+import time
+
 from sqlalchemy.orm import Session
 
+from app.core.logger import get_logger
 from app.core.security import (
     create_access_token,
     get_current_user_id,
@@ -14,6 +17,8 @@ from app.core.security import (
 )
 from app.exceptions import BusinessException, UnauthorizedException
 from app.models.user import User
+
+logger = get_logger(__name__)
 
 
 class AuthService:
@@ -33,10 +38,13 @@ class AuthService:
 
         user_service = UserService(self.db)
         if user_service.get_by_username(username):
+            logger.warning(f"注册失败：用户名 '{username}' 已存在")
             raise BusinessException(f"用户名 '{username}' 已存在")
         if email and user_service.get_by_email(email):
+            logger.warning(f"注册失败：邮箱 '{email}' 已被注册")
             raise BusinessException(f"邮箱 '{email}' 已注册")
-        return user_service.create_user(
+
+        user = user_service.create_user(
             username=username,
             password=password,
             display_name=display_name,
@@ -44,19 +52,29 @@ class AuthService:
             phone=phone,
             role=role,
         )
+        logger.info(f"用户注册成功: user_id={user.id}, username={username}, role={role}")
+        return user
 
     def login(self, username: str, password: str) -> dict:
+        _start = time.perf_counter()
         user = self._authenticate(username, password)
         if not user:
+            logger.warning(f"登录失败：用户名或密码错误, username={username}")
             raise UnauthorizedException("用户名或密码错误")
         if not user.is_active:
+            logger.warning(f"登录失败：账号已被禁用, user_id={user.id}")
             raise UnauthorizedException("账号已被禁用，请联系管理员")
 
-        access_token = create_access_token(subject=user.id)
+        access_token = create_access_token(subject=user.id, role=user.role)
+        elapsed = (time.perf_counter() - _start) * 1000
+        logger.info(
+            f"登录成功: user_id={user.id}, username={username}, "
+            f"role={user.role}, elapsed_ms={elapsed:.1f}"
+        )
         return {
             "access_token": access_token,
             "token_type": "bearer",
-            "expires_in": 60 * 60,  # 1 小时
+            "expires_in": 60 * 60,
             "user": self._serialize_user(user),
         }
 

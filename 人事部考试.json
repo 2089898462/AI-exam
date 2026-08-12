@@ -1,0 +1,260 @@
+{
+  "title": "人事考试试题",
+  "position": "人事专员",
+  "duration_minutes": 60,
+  "pass_score": 60,
+  "questions": [
+    {
+      "type": "single_choice",
+      "content": "试用期包含在劳动合同期限内，且试用期最长不得超过6个月。",
+      "options": [
+        {
+          "label": "A",
+          "text": "对"
+        },
+        {
+          "label": "B",
+          "text": "错"
+        }
+      ],
+      "answer": "A",
+      "score": 3,
+      "question_no": 1,
+      "sort_order": 1
+    },
+    {
+      "type": "single_choice",
+      "content": "面试时，HR应优先考虑候选人的学历背景，而忽视实际工作能力。",
+      "options": [
+        {
+          "label": "A",
+          "text": "对"
+        },
+        {
+          "label": "B",
+          "text": "错"
+        }
+      ],
+      "answer": "B",
+      "score": 3,
+      "question_no": 2,
+      "sort_order": 2
+    },
+    {
+      "type": "single_choice",
+      "content": "根据《劳动合同法》，员工在试用期间被证明不符合录用条件的，用人单位可以解除劳动合同。",
+      "options": [
+        {
+          "label": "A",
+          "text": "对"
+        },
+        {
+          "label": "B",
+          "text": "错"
+        }
+      ],
+      "answer": "A",
+      "score": 3,
+      "question_no": 3,
+      "sort_order": 3
+    },
+    {
+      "type": "single_choice",
+      "content": "劳动争议仲裁的时效是1年，从劳动争议发生之日起计算。",
+      "options": [
+        {
+          "label": "A",
+          "text": "对"
+        },
+        {
+          "label": "B",
+          "text": "错"
+        }
+      ],
+      "answer": "A",
+      "score": 3,
+      "question_no": 4,
+      "sort_order": 4
+    },
+    {
+      "type": "single_choice",
+      "content": "员工离职时，公司有义务返还其押金，但押金金额不得高于员工月工资的20%。",
+      "options": [
+        {
+          "label": "A",
+          "text": "对"
+        },
+        {
+          "label": "B",
+          "text": "错"
+        }
+      ],
+      "answer": "B",
+      "score": 3,
+      "question_no": 5,
+      "sort_order": 5
+    },
+    {
+      "type": "single_choice",
+      "content": "以下哪项属于劳动合同的必备条款？",
+      "options": [
+        {
+          "label": "A",
+          "text": "工作内容"
+        },
+        {
+          "label": "B",
+          "text": "试用期"
+        },
+        {
+          "label": "C",
+          "text": "社会保险"
+        },
+        {
+          "label": "D",
+          "text": "以上都是"
+        }
+      ],
+      "answer": "D",
+      "score": 3,
+      "question_no": 6,
+      "sort_order": 6
+    },
+    {
+      "type": "single_choice",
+      "content": "《劳动合同法》规定，用人单位自用工之日起满一个月不满一年的，应当与劳动者订立书面劳动合同，否则需支付什么赔偿？",
+      "options": [
+        {
+          "label": "A",
+          "text": "二倍工资"
+        },
+        {
+          "label": "B",
+          "text": "三倍工资"
+        },
+        {
+          "label": "C",
+          "text": "四倍工资"
+        },
+        {
+          "label": "D",
+          "text": "五倍工资"
+        }
+      ],
+      "answer": "A",
+      "score": 3,
+      "question_no": 7,
+      "sort_order": 7
+    },
+    {
+      "type": "single_choice",
+      "content": "员工在试用期间被证明不符合录用条件的，用人单位可以解除劳动合同，但需提前多久通知？",
+      "options": [
+        {
+          "label": "A",
+          "text": "3天"
+        },
+        {
+          "label": "B",
+          "text": "7天"
+        },
+        {
+          "label": "C",
+          "text": "15天"
+        },
+        {
+          "label": "D",
+          "text": "30天"
+        }
+      ],
+      "answer": "B",
+      "score": 3,
+      "question_no": 8,
+      "sort_order": 8
+    },
+    {
+      "type": "single_choice",
+      "content": "劳动争议仲裁的受理范围包括？",
+      "options": [
+        {
+          "label": "A",
+          "text": "用人单位拖欠工资"
+        },
+        {
+          "label": "B",
+          "text": "未签订劳动合同"
+        },
+        {
+          "label": "C",
+          "text": "以上都是"
+        },
+        {
+          "label": "D",
+          "text": "以上都不是"
+        }
+      ],
+      "answer": "C",
+      "score": 3,
+      "question_no": 9,
+      "sort_order": 9
+    },
+    {
+      "type": "single_choice",
+      "content": "以下哪项是员工解除劳动合同的合法情形？",
+      "options": [
+        {
+          "label": "A",
+          "text": "用人单位未及时足额支付劳动报酬"
+        },
+        {
+          "label": "B",
+          "text": "用人单位未依法为劳动者缴纳社会保险费"
+        },
+        {
+          "label": "C",
+          "text": "以上都是"
+        },
+        {
+          "label": "D",
+          "text": "以上都不是"
+        }
+      ],
+      "answer": "C",
+      "score": 3,
+      "question_no": 10,
+      "sort_order": 10
+    },
+    {
+      "type": "short_answer",
+      "content": "《劳动合同法》规定，试用期工资不得低于本单位相同岗位最低档工资的（______）%或劳动合同约定工资的（______）%。",
+      "answer": "80,100",
+      "score": 9,
+      "question_no": 11,
+      "sort_order": 11
+    },
+    {
+      "type": "short_answer",
+      "content": "劳动争议仲裁委员会由（______）、（______）和（______）组成。",
+      "answer": "劳动行政部门,企业方面代表,工会代表",
+      "score": 9,
+      "question_no": 12,
+      "sort_order": 12
+    },
+    {
+      "type": "short_answer",
+      "content": "员工在试用期间被证明不符合录用条件的，用人单位可以解除劳动合同，但需提前（______）日通知劳动者。",
+      "answer": "3",
+      "score": 3,
+      "question_no": 13,
+      "sort_order": 13
+    },
+    {
+      "type": "short_answer",
+      "content": "用人单位自用工之日起满（______）日未与劳动者订立书面劳动合同的，应当向劳动者支付（______）月的双倍工资。",
+      "answer": "1,1",
+      "score": 6,
+      "question_no": 14,
+      "sort_order": 14
+    }
+  ]
+}

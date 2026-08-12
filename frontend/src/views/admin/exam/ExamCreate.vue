@@ -188,8 +188,33 @@ function goBack() {
   router.push('/admin/exams')
 }
 
-function handleJsonImport() {
-  ElMessage.info('JSON 导入功能开发中...')
+function handleJsonImport(file) {
+  if (!file) return
+  if (!file.name.endsWith('.json')) {
+    ElMessage.error('仅支持 .json 格式文件')
+    return false
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    ElMessage.error('文件大小超过限制，最大支持 5MB')
+    return false
+  }
+
+  if (!route.params.id) {
+    ElMessage.warning('请先保存考试后再导入题目')
+    return false
+  }
+
+  const examId = route.params.id
+  examApi.importExam(examId, file)
+    .then(res => {
+      ElMessage.success(`导入成功，共导入 ${res.data.imported_count} 道题目`)
+      loadExam()
+    })
+    .catch(err => {
+      const msg = err?.message || '导入失败'
+      ElMessage.error(msg)
+    })
+
   return false
 }
 
