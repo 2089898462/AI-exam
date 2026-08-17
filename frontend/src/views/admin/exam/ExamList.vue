@@ -51,7 +51,7 @@
         <el-table-column prop="duration_minutes" label="时长(分)" width="100" />
         <el-table-column prop="question_count" label="题目数" width="90" />
         <el-table-column prop="created_at" label="创建时间" width="170" />
-        <el-table-column label="操作" width="320" fixed="right">
+        <el-table-column label="操作" width="380" fixed="right">
           <template #default="{ row }">
             <el-button size="small" type="primary" link @click="goDetail(row.id)">查看</el-button>
             <el-button
@@ -61,6 +61,12 @@
               link
               @click="goEdit(row.id)"
             >编辑</el-button>
+            <el-button
+              size="small"
+              type="info"
+              link
+              @click="handleClone(row)"
+            >复制</el-button>
             <el-button
               v-if="row.status === 'draft'"
               size="small"
@@ -104,6 +110,31 @@
         @current-change="fetchList"
       />
     </el-card>
+
+    <el-dialog
+      v-model="cloneDialogVisible"
+      title="复制试卷"
+      width="480px"
+      :close-on-click-modal="false"
+    >
+      <el-form :model="{ title: cloneNewTitle }" label-width="100px">
+        <el-form-item label="原试卷">
+          <span>{{ cloneTargetExam?.title }}</span>
+        </el-form-item>
+        <el-form-item label="新名称" required>
+          <el-input v-model="cloneNewTitle" placeholder="请输入新试卷名称" />
+        </el-form-item>
+        <el-form-item>
+          <span style="color: #909399; font-size: 12px">
+            新试卷将复制所有题目（不包含考试记录和答题数据），状态为草稿
+          </span>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="cloneDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmClone">确认复制</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -111,7 +142,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Plus } from '@element-plus/icons-vue'
+import { Search, Plus, CopyDocument } from '@element-plus/icons-vue'
 import { examApi } from '@/api'
 
 const router = useRouter()
@@ -125,6 +156,10 @@ const statusFilter = ref('')
 
 const statusText = (s) => ({ draft: '草稿', published: '已发布', closed: '已关闭' }[s] || s)
 const statusTagType = (s) => ({ draft: 'info', published: 'success', closed: 'danger' }[s] || 'info')
+
+const cloneDialogVisible = ref(false)
+const cloneTargetExam = ref(null)
+const cloneNewTitle = ref('')
 
 async function fetchList() {
   loading.value = true
@@ -201,16 +236,45 @@ async function handleRepublish(row) {
   }
 }
 
+function handleClone(row) {
+  cloneTargetExam.value = row
+  cloneNewTitle.value = `${row.title}（副本）`
+  cloneDialogVisible.value = true
+}
+
+async function confirmClone() {
+  if (!cloneNewTitle.value.trim()) {
+    ElMessage.warning('请输入新试卷名称')
+    return
+  }
+  try {
+    await examApi.cloneExam(cloneTargetExam.value.id, cloneNewTitle.value.trim())
+    ElMessage.success('复制成功')
+    cloneDialogVisible.value = false
+    fetchList()
+  } catch (e) {
+    /* error handled by interceptor */
+  }
+}
+
 async function handleDelete(row) {
   try {
-    await ElMessageBox.confirm(`确定删除考试「${row.title}」吗？此操作不可恢复。`, '删除确认', {
-      type: 'error',
+    // 根据状态设置不同的确认提示
+    let confirmMsg = `确定删除考试「${row.title}」吗？此操作不可恢复。`
+    if (row.status === 'closed') {
+      confirmMsg = `该试卷已结束考试，确认删除？\n\n试卷名称：${row.title}\n此操作可能影响历史成绩查看，请谨慎操作。`
+    }
+    
+    await ElMessageBox.confirm(confirmMsg, '删除确认', {
+      type: 'warning',
+      confirmButtonText: '确认删除',
+      cancelButtonText: '取消'
     })
     await examApi.deleteExam(row.id)
     ElMessage.success('删除成功')
     fetchList()
   } catch (e) {
-    /* cancelled */
+    /* cancelled or error */
   }
 }
 

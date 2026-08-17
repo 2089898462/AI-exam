@@ -5,7 +5,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import Field
+from pydantic import Field, computed_field
 
 from app.schemas.common import BaseSchema
 
@@ -64,6 +64,12 @@ class GradingCompleteRequest(BaseSchema):
     passed: Optional[bool] = Field(default=None, description="是否及格")
 
 
+class HRReviewUpdateRequest(BaseSchema):
+    """HR复核分数更新请求"""
+    review_score: float = Field(..., ge=0, description="HR复核分数，必须大于等于0")
+    review_comment: Optional[str] = Field(default=None, description="HR复核备注")
+
+
 # ============================================================
 # 评分规则
 # ============================================================
@@ -119,9 +125,17 @@ class GradingResultItem(BaseSchema):
     total_score: Optional[float] = None
     auto_score: Optional[float] = None
     ai_score: Optional[float] = None
+    review_score: Optional[float] = None
+    review_comment: Optional[str] = None
     passed: Optional[bool] = None
     completed_at: Optional[str] = None
     created_at: Optional[str] = None
+
+    @computed_field
+    @property
+    def final_score(self) -> Optional[float]:
+        """最终成绩：HR复核分数优先，否则使用系统总分"""
+        return self.review_score if self.review_score is not None else self.total_score
 
 
 class GradingResultListResponse(BaseSchema):
@@ -145,6 +159,12 @@ class AnswerDetailResponse(BaseSchema):
     full_score: float
     is_correct: Optional[bool] = None
     options: Optional[list] = None
+    score_level: Optional[str] = None
+    ai_score: Optional[float] = None
+    ai_reason: Optional[str] = None
+    ai_confidence: Optional[float] = None
+    needs_review: Optional[bool] = None
+    prompt_version: Optional[str] = None
 
 
 class GradingStatisticsResponse(BaseSchema):
@@ -169,9 +189,17 @@ class GradingResultDetailResponse(BaseSchema):
     total_score: Optional[float] = None
     auto_score: Optional[float] = None
     ai_score: Optional[float] = None
+    review_score: Optional[float] = None
+    review_comment: Optional[str] = None
     passed: Optional[bool] = None
     start_time: Optional[str] = None
     complete_time: Optional[str] = None
     error_message: Optional[str] = None
     statistics: GradingStatisticsResponse
     answers: list[AnswerDetailResponse] = []
+
+    @computed_field
+    @property
+    def final_score(self) -> Optional[float]:
+        """最终成绩：HR复核分数优先，否则使用系统总分"""
+        return self.review_score if self.review_score is not None else self.total_score

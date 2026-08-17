@@ -695,6 +695,7 @@ class GradingService(BaseService[GradingRecord]):
                 ExamRecord.id == record.exam_record_id
             ).first()
             if exam_record:
+                review_val = float(record.review_score) if record.review_score is not None else None
                 items.append({
                     "id": record.id,
                     "exam_record_id": record.exam_record_id,
@@ -703,9 +704,11 @@ class GradingService(BaseService[GradingRecord]):
                     "candidate_phone": exam_record.candidate_phone,
                     "status": record.status,
                     "grading_type": record.grading_type,
-                    "total_score": float(record.total_score) if record.total_score else None,
-                    "auto_score": float(record.auto_score) if record.auto_score else None,
-                    "ai_score": float(record.ai_score) if record.ai_score else None,
+                    "total_score": float(record.total_score) if record.total_score is not None else None,
+                    "auto_score": float(record.auto_score) if record.auto_score is not None else None,
+                    "ai_score": float(record.ai_score) if record.ai_score is not None else None,
+                    "review_score": review_val,
+                    "review_comment": record.review_comment,
                     "passed": record.passed,
                     "completed_at": record.completed_at.isoformat() if record.completed_at else None,
                     "created_at": record.created_at.isoformat() if record.created_at else None,
@@ -785,11 +788,15 @@ class GradingService(BaseService[GradingRecord]):
             }
             answer_details.append(detail)
 
+        # 查询考试的总题数（从Question表获取，不是答题记录）
+        total_questions = self.db.query(Question).filter(
+            Question.exam_id == exam_record.exam_id
+        ).count()
+
         # 统计信息
         answered_count = len([a for a in answers if a.answer_content and a.answer_content.strip()])
         correct_count = len([a for a in answers if a.is_correct])
         needs_review_count = len([a for a in answers if a.needs_review])
-        total_questions = len(answers)
 
         result = {
             "grading_id": grading.id,
@@ -801,9 +808,11 @@ class GradingService(BaseService[GradingRecord]):
             "candidate_name": exam_record.candidate_name,
             "candidate_phone": exam_record.candidate_phone,
             "candidate_email": exam_record.candidate_email,
-            "total_score": float(grading.total_score) if grading.total_score else None,
-            "auto_score": float(grading.auto_score) if grading.auto_score else None,
-            "ai_score": float(grading.ai_score) if grading.ai_score else None,
+            "total_score": float(grading.total_score) if grading.total_score is not None else None,
+            "auto_score": float(grading.auto_score) if grading.auto_score is not None else None,
+            "ai_score": float(grading.ai_score) if grading.ai_score is not None else None,
+            "review_score": float(grading.review_score) if grading.review_score is not None else None,
+            "review_comment": grading.review_comment,
             "passed": grading.passed,
             "start_time": grading.started_at.isoformat() if grading.started_at else None,
             "complete_time": grading.completed_at.isoformat() if grading.completed_at else None,
@@ -813,8 +822,68 @@ class GradingService(BaseService[GradingRecord]):
                 "answered_count": answered_count,
                 "correct_count": correct_count,
                 "needs_review_count": needs_review_count,
-                "correct_rate": round(correct_count / answered_count * 100, 1) if answered_count > 0 else 0,
+                "correct_rate": round(correct_count / total_questions * 100, 1) if total_questions > 0 else 0,
             },
             "answers": answer_details,
         }
         return result
+
+    def update_hr_review(
+        self,
+        exam_record_id: int,
+        review_score: float,
+        review_comment: str | None = None,
+    ) -> dict:
+        """更新HR复核分数
+
+        Args:
+            exam_record_id: 考试记录 ID
+            review_score: HR复核分数
+            review_comment: HR复核备注
+
+        Returns:
+            dict: 更新后的评分记录数据
+        """
+        # 查询评分记录
+        grading = self.get_grading_by_record_id(exam_record_id)
+        if not grading:
+            raise NotFoundException("评分记录不存在")
+
+        if grading.status != "completed":
+            raise BusinessException("评分尚未完成，无法进行HR复核")
+
+        # 查询考试信息用于分数校验
+        exam_record = self.db.query(ExamRecord).filter(
+            ExamRecord.id == exam_record_id
+        ).first()
+        if not exam_record:
+            raise NotFoundException("考试记录不存在")
+
+        exam = self.db.query(Exam).filter(Exam.id == exam_record.exam_id).first()
+        if not exam:
+            raise NotFoundException("考试不存在")
+
+        # 计算试卷总分
+        from app.models.question import Question
+        questions = self.db.query(Question).filter(Question.exam_id == exam.id).all()
+        max_total_score = sum(float(q.score) for q in questions)
+
+        # 校验复核分数
+        if review_score < 0:
+            raise BusinessException("复核分数不能为负数")
+        if review_score > max_total_score:
+            raise BusinessException(f"复核分数不能超过试卷满分 {max_total_score}")
+
+        # 更新复核字段
+        grading.review_score = review_score
+        grading.review_comment = review_comment
+        self.db.commit()
+        self.db.refresh(grading)
+
+        logger.info(
+            f"HR复核更新: exam_record_id={exam_record_id}, "
+            f"review_score={review_score}, review_comment={review_comment}"
+        )
+
+        # 返回更新后的完整数据
+        return self.get_grading_result_detail(exam_record_id)

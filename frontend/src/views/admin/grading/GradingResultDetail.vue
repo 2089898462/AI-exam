@@ -37,34 +37,153 @@
         </el-col>
       </el-row>
 
-      <!-- 评分结果卡片 -->
+      <!-- 评分结果展示 -->
       <el-row :gutter="16" style="margin-bottom: 16px">
-        <el-col :span="8">
+        <el-col :span="6">
           <el-card class="score-card">
             <el-statistic
-              title="总分"
+              title="AI评分"
               :value="detail.total_score || 0"
               :precision="1"
-              :class="{ 'pass': detail.passed, 'fail': detail.passed === false }"
+            />
+            <div class="score-detail">
+              <span class="score-sub">客观题: {{ detail.auto_score || 0 }}</span>
+              <span class="score-sub">AI简答题: {{ detail.ai_score || 0 }}</span>
+            </div>
+          </el-card>
+        </el-col>
+        <el-col :span="6">
+          <el-card class="score-card">
+            <template v-if="detail.review_score !== null && detail.review_score !== undefined">
+              <el-statistic
+                title="HR复核分数"
+                :value="detail.review_score"
+                :precision="1"
+              />
+              <div class="score-status">
+                <el-tag type="warning" size="small">HR已复核</el-tag>
+              </div>
+            </template>
+            <template v-else>
+              <el-statistic title="HR复核分数" value="—" />
+              <div class="score-status">
+                <el-tag type="info" size="small">暂无复核</el-tag>
+              </div>
+            </template>
+          </el-card>
+        </el-col>
+        <el-col :span="6">
+          <el-card class="score-card final-score">
+            <el-statistic
+              title="最终成绩"
+              :value="finalScore"
+              :precision="1"
+              :class="{ 'pass': finalPassed, 'fail': finalPassed === false }"
             />
             <div class="score-status">
-              <el-tag v-if="detail.passed !== null && detail.passed !== undefined" :type="detail.passed ? 'success' : 'danger'" size="large">
-                {{ detail.passed ? '及格' : '不及格' }}
+              <el-tag v-if="finalPassed !== null && finalPassed !== undefined" :type="finalPassed ? 'success' : 'danger'" size="small">
+                {{ finalPassed ? '及格' : '不及格' }}
+              </el-tag>
+              <el-tag v-if="detail.review_score !== null && detail.review_score !== undefined" type="warning" size="small" style="margin-left: 4px">
+                取HR复核
+              </el-tag>
+              <el-tag v-else type="info" size="small" style="margin-left: 4px">
+                取AI评分
               </el-tag>
             </div>
           </el-card>
         </el-col>
-        <el-col :span="8">
-          <el-card class="score-card">
-            <el-statistic title="客观题得分" :value="detail.auto_score || 0" :precision="1" />
-          </el-card>
-        </el-col>
-        <el-col :span="8">
-          <el-card class="score-card">
-            <el-statistic title="AI评分得分" :value="detail.ai_score || 0" :precision="1" />
+        <el-col :span="6">
+          <el-card>
+            <template #header>
+              <span class="card-title">HR复核操作</span>
+            </template>
+            <el-form :model="reviewForm" label-width="90px" size="small">
+              <el-form-item label="复核分数">
+                <el-input-number
+                  v-model="reviewForm.review_score"
+                  :min="0"
+                  :max="maxScore"
+                  :precision="1"
+                  :step="0.5"
+                  placeholder="输入复核分数"
+                  controls-position="right"
+                  style="width: 100%"
+                />
+              </el-form-item>
+              <el-form-item label="复核备注">
+                <el-input
+                  v-model="reviewForm.review_comment"
+                  type="textarea"
+                  :rows="2"
+                  placeholder="修改原因"
+                  maxlength="500"
+                  show-word-limit
+                />
+              </el-form-item>
+              <el-form-item>
+                <el-button type="primary" size="small" :loading="submitting" @click="submitReview">保存复核</el-button>
+                <el-button size="small" @click="resetReviewForm">重置</el-button>
+              </el-form-item>
+            </el-form>
           </el-card>
         </el-col>
       </el-row>
+
+      <!-- AI评分详情（折叠展示） -->
+      <el-card style="margin-bottom: 16px">
+        <template #header>
+          <div class="card-header-with-toggle">
+            <span class="card-title">AI评分详情</span>
+            <el-tag size="small" type="info">客观题: {{ detail.auto_score || 0 }} | AI简答题: {{ detail.ai_score || 0 }}</el-tag>
+          </div>
+        </template>
+        <el-collapse v-model="activeCollapse">
+          <el-collapse-item title="客观题得分详情" name="auto">
+            <el-descriptions :column="2" border>
+              <el-descriptions-item label="客观题总分">{{ detail.auto_score || 0 }}</el-descriptions-item>
+              <el-descriptions-item label="总题数">{{ detail.statistics.total_questions }}</el-descriptions-item>
+              <el-descriptions-item label="已答题数">{{ detail.statistics.answered_count }}</el-descriptions-item>
+              <el-descriptions-item label="正确题数">{{ detail.statistics.correct_count }}</el-descriptions-item>
+            </el-descriptions>
+          </el-collapse-item>
+          <el-collapse-item title="AI简答题评分详情" name="ai">
+            <el-descriptions :column="2" border>
+              <el-descriptions-item label="AI评分总分">{{ detail.ai_score || 0 }}</el-descriptions-item>
+              <el-descriptions-item label="AI置信度">{{ aiConfidenceText }}</el-descriptions-item>
+            </el-descriptions>
+            <el-divider content-position="left">AI评分详情</el-divider>
+            <el-table :data="aiScoredAnswers" border stripe size="small" v-if="aiScoredAnswers.length > 0">
+              <el-table-column prop="question_no" label="题号" width="80" />
+              <el-table-column prop="question_content" label="题目" min-width="200" show-overflow-tooltip />
+              <el-table-column prop="ai_score" label="AI得分" width="100">
+                <template #default="{ row }">
+                  <span class="text-success">{{ row.ai_score ?? '-' }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="score" label="最终得分" width="100">
+                <template #default="{ row }">
+                  <span>{{ row.score ?? '-' }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="ai_confidence" label="置信度" width="100">
+                <template #default="{ row }">
+                  <el-tag v-if="row.ai_confidence !== null && row.ai_confidence !== undefined" :type="row.ai_confidence >= 0.8 ? 'success' : row.ai_confidence >= 0.6 ? 'warning' : 'danger'" size="small">
+                    {{ (row.ai_confidence * 100).toFixed(0) }}%
+                  </el-tag>
+                  <span v-else>-</span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="ai_reason" label="评分原因" min-width="200" show-overflow-tooltip>
+                <template #default="{ row }">
+                  <span>{{ row.ai_reason || '-' }}</span>
+                </template>
+              </el-table-column>
+            </el-table>
+            <el-empty v-else description="暂无AI评分详情" :image-size="80" />
+          </el-collapse-item>
+        </el-collapse>
+      </el-card>
 
       <!-- 评分状态和时间 -->
       <el-card style="margin-bottom: 16px">
@@ -146,11 +265,19 @@
               <span class="correct">{{ row.standard_answer || '-' }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="score" label="得分" width="80">
+          <el-table-column label="AI评分" width="90">
             <template #default="{ row }">
               <span :class="{ 'text-success': row.is_correct, 'text-danger': row.is_correct === false }">
                 {{ row.score ?? '-' }}
               </span>
+            </template>
+          </el-table-column>
+          <el-table-column label="HR复核得分" width="100">
+            <template #default="{ row }">
+              <span v-if="detail.review_score !== null && detail.review_score !== undefined" class="text-warning">
+                —
+              </span>
+              <span v-else class="text-muted">—</span>
             </template>
           </el-table-column>
           <el-table-column prop="full_score" label="满分" width="80" />
@@ -182,17 +309,65 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { gradingResultApi } from '@/api'
 
 const route = useRoute()
 const router = useRouter()
 const loading = ref(true)
+const submitting = ref(false)
 const detail = ref(null)
 const errorMessage = ref('')
+const activeCollapse = ref([])
+
+const reviewForm = reactive({
+  review_score: null,
+  review_comment: '',
+})
 
 const examRecordId = computed(() => parseInt(route.params.examRecordId))
+
+// 计算最终显示分数：如果有HR复核分数，显示复核分数；否则显示系统总分
+const finalScore = computed(() => {
+  if (!detail.value) return 0
+  if (detail.value.review_score !== null && detail.value.review_score !== undefined) {
+    return detail.value.review_score
+  }
+  return detail.value.total_score || 0
+})
+
+// 计算最终及格状态
+const finalPassed = computed(() => {
+  if (!detail.value) return null
+  if (detail.value.review_score !== null && detail.value.review_score !== undefined) {
+    // 如果有复核分数，检查是否及格
+    // 默认60分及格，或者使用原有的passed判断
+    return detail.value.review_score >= 60
+  }
+  return detail.value.passed
+})
+
+// AI评分详情相关数据
+const aiScoredAnswers = computed(() => {
+  if (!detail.value || !detail.value.answers) return []
+  return detail.value.answers.filter(a => a.ai_score !== null && a.ai_score !== undefined)
+})
+
+const aiConfidenceText = computed(() => {
+  const aiAnswers = aiScoredAnswers.value
+  if (aiAnswers.length === 0) return '-'
+  const totalConfidence = aiAnswers.reduce((sum, a) => sum + (a.ai_confidence || 0), 0)
+  const avgConfidence = totalConfidence / aiAnswers.length
+  return (avgConfidence * 100).toFixed(1) + '%'
+})
+
+// 计算试卷总分（用于复核分数上限）
+const maxScore = computed(() => {
+  if (!detail.value || !detail.value.answers) return 100
+  return detail.value.answers.reduce((sum, a) => sum + (a.full_score || 0), 0)
+})
 
 const statusText = (s) => ({ pending: '待评分', grading: '评分中', completed: '已完成', failed: '评分失败' }[s] || s)
 const statusTagType = (s) => ({ pending: 'info', grading: 'warning', completed: 'success', failed: 'danger' }[s] || 'info')
@@ -221,6 +396,63 @@ function goBack() {
   router.push('/admin/grading')
 }
 
+function initReviewForm() {
+  if (detail.value) {
+    reviewForm.review_score = detail.value.review_score
+    reviewForm.review_comment = detail.value.review_comment || ''
+  }
+}
+
+function resetReviewForm() {
+  initReviewForm()
+  ElMessage.info('已重置为当前数据')
+}
+
+async function submitReview() {
+  if (reviewForm.review_score === null || reviewForm.review_score === undefined) {
+    ElMessage.warning('请输入复核分数')
+    return
+  }
+
+  if (reviewForm.review_score < 0) {
+    ElMessage.warning('复核分数不能为负数')
+    return
+  }
+
+  if (reviewForm.review_score > maxScore.value) {
+    ElMessage.warning(`复核分数不能超过试卷满分 ${maxScore.value}`)
+    return
+  }
+
+  try {
+    await ElMessageBox.confirm(
+      `确认保存HR复核分数 ${reviewForm.review_score} 分？保存后将作为最终成绩显示。`,
+      '确认保存',
+      {
+        confirmButtonText: '确认保存',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    )
+  } catch {
+    return
+  }
+
+  submitting.value = true
+  try {
+    const res = await gradingResultApi.updateHRReview(examRecordId.value, {
+      review_score: reviewForm.review_score,
+      review_comment: reviewForm.review_comment,
+    })
+    detail.value = res.data
+    ElMessage.success('HR复核保存成功')
+  } catch (e) {
+    ElMessage.error(e.message || '保存失败')
+  } finally {
+    submitting.value = false
+  }
+}
+
 async function fetchDetail() {
   if (!examRecordId.value) {
     errorMessage.value = '无效的考试记录ID'
@@ -232,6 +464,7 @@ async function fetchDetail() {
   try {
     const res = await gradingResultApi.getResultDetail(examRecordId.value)
     detail.value = res.data
+    initReviewForm()
   } catch (e) {
     errorMessage.value = e.message || '加载失败'
   } finally {
@@ -248,13 +481,35 @@ onMounted(fetchDetail)
   font-weight: 600;
 }
 
+.card-header-with-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .score-card {
   text-align: center;
-  padding: 20px 0;
+  padding: 16px 0;
+}
+
+.score-card.final-score {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+}
+
+.score-detail {
+  margin-top: 8px;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.score-sub {
+  font-size: 12px;
+  color: #909399;
 }
 
 .score-status {
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 .stat-card {
@@ -305,6 +560,15 @@ onMounted(fetchDetail)
 .text-danger {
   color: #f56c6c;
   font-weight: 600;
+}
+
+.text-warning {
+  color: #e6a23c;
+  font-weight: 600;
+}
+
+.text-muted {
+  color: #c0c4cc;
 }
 
 .pass {

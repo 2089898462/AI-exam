@@ -63,17 +63,30 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="total_score" label="总分" width="100">
+        <el-table-column label="AI评分" width="100">
           <template #default="{ row }">
-            <span :class="{ 'text-success': row.passed, 'text-danger': row.passed === false }">
-              {{ row.total_score ?? '-' }}
+            <span>{{ row.total_score ?? '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="HR复核" width="100">
+          <template #default="{ row }">
+            <span v-if="row.review_score !== null && row.review_score !== undefined" class="text-warning">
+              {{ row.review_score }}
+            </span>
+            <span v-else class="text-muted">—</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="最终成绩" width="100">
+          <template #default="{ row }">
+            <span :class="{ 'text-success': getFinalScorePassed(row), 'text-danger': getFinalScorePassed(row) === false }">
+              {{ getFinalScore(row) }}
             </span>
           </template>
         </el-table-column>
         <el-table-column label="及格状态" width="100">
           <template #default="{ row }">
-            <el-tag v-if="row.passed !== null && row.passed !== undefined" :type="row.passed ? 'success' : 'danger'">
-              {{ row.passed ? '及格' : '不及格' }}
+            <el-tag v-if="getFinalScorePassed(row) !== null && getFinalScorePassed(row) !== undefined" :type="getFinalScorePassed(row) ? 'success' : 'danger'">
+              {{ getFinalScorePassed(row) ? '及格' : '不及格' }}
             </el-tag>
             <span v-else>-</span>
           </template>
@@ -127,6 +140,20 @@ const statusText = (s) => ({ pending: '待评分', grading: '评分中', complet
 const statusTagType = (s) => ({ pending: 'info', grading: 'warning', completed: 'success', failed: 'danger' }[s] || 'info')
 const gradingTypeText = (t) => ({ auto: '自动', ai: 'AI', hybrid: '混合' }[t] || t)
 const gradingTypeTag = (t) => ({ auto: '', ai: 'warning', hybrid: 'info' }[t] || '')
+
+function getFinalScore(row) {
+  if (row.review_score !== null && row.review_score !== undefined) {
+    return row.review_score
+  }
+  return row.total_score ?? '-'
+}
+
+function getFinalScorePassed(row) {
+  if (row.review_score !== null && row.review_score !== undefined) {
+    return row.review_score >= 60
+  }
+  return row.passed
+}
 
 async function fetchList() {
   loading.value = true
@@ -188,5 +215,14 @@ onMounted(fetchList)
 .text-danger {
   color: #f56c6c;
   font-weight: 600;
+}
+
+.text-warning {
+  color: #e6a23c;
+  font-weight: 600;
+}
+
+.text-muted {
+  color: #c0c4cc;
 }
 </style>

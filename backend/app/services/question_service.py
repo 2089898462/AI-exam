@@ -49,6 +49,7 @@ class QuestionService(BaseService[Question]):
         question = self.get(question_id)
         if not question or question.exam_id != exam_id:
             raise NotFoundException("题目不存在")
+        self._validate_question_data(kwargs)
         return self.update(question_id, **kwargs)
 
     def delete_question(self, exam_id: int, question_id: int, current_user: User) -> bool:
@@ -61,7 +62,23 @@ class QuestionService(BaseService[Question]):
         question = self.get(question_id)
         if not question or question.exam_id != exam_id:
             raise NotFoundException("题目不存在")
-        return self.delete(question_id)
+
+        deleted_sort_order = question.sort_order
+        result = self.delete(question_id)
+
+        remaining = (
+            self.db.query(Question)
+            .filter(Question.exam_id == exam_id)
+            .order_by(Question.sort_order)
+            .all()
+        )
+        for i, q in enumerate(remaining):
+            new_order = i
+            if q.sort_order != new_order:
+                q.sort_order = new_order
+        self.db.commit()
+
+        return result
 
     def batch_create(self, exam_id: int, current_user: User, questions: list[dict]) -> list[Question]:
         exam = self.db.query(Exam).filter(Exam.id == exam_id).first()
@@ -90,14 +107,16 @@ class QuestionService(BaseService[Question]):
     def _validate_question_data(self, data: dict) -> None:
         q_type = data.get("type")
         options = data.get("options")
-        answer = data.get("answer", "")
+        answer = data.get("answer")
 
         if q_type in ("single_choice", "multiple_choice"):
-            if not options or len(options) < 2:
+            if options is not None and len(options) < 2:
                 raise BusinessException(f"{q_type} 题型至少需要 2 个选项")
+            if answer is not None and not answer.strip():
+                raise BusinessException("答案不能为空")
         elif q_type == "true_false":
-            if answer not in ("true", "false"):
+            if answer is not None and answer not in ("true", "false"):
                 raise BusinessException("判断题答案必须是 'true' 或 'false'")
         elif q_type == "short_answer":
-            if not answer or not answer.strip():
+            if answer is not None and not answer.strip():
                 raise BusinessException("简答题答案不能为空")

@@ -57,8 +57,22 @@ class ExamService(BaseService[Exam]):
         if not exam:
             raise NotFoundException("考试不存在")
         self._ensure_owner_or_admin(exam, current_user, "删除")
-        if exam.status != "draft":
-            raise BusinessException("只有草稿状态的考试才能删除")
+        
+        # 调整删除权限：允许 draft 和 closed 状态，禁止 published 状态
+        if exam.status == "published":
+            raise BusinessException("考试进行中，禁止删除。请先关闭考试。")
+            
+        if exam.status not in ["draft", "closed"]:
+            raise BusinessException("当前试卷状态不允许删除")
+            
+        # 增加删除安全校验：检查 closed 状态试卷是否存在历史考试数据
+        if exam.status == "closed":
+            # 检查是否存在考试记录
+            if exam.exam_records and len(exam.exam_records) > 0:
+                raise BusinessException(
+                    "该试卷已有历史考试记录，删除后可能影响成绩查看，请确认"
+                )
+
         return self.delete(exam_id)
 
     def publish_exam(self, exam_id: int, current_user: User) -> Exam:
@@ -104,10 +118,6 @@ class ExamService(BaseService[Exam]):
         if not exam:
             raise NotFoundException("考试不存在")
         self._ensure_owner_or_admin(exam, current_user, "复制")
-
-        # 只有已关闭的考试才能复制
-        if exam.status != "closed":
-            raise BusinessException("只有已关闭的考试才能复制复用")
 
         # 创建新的 Exam 实例
         new_exam = Exam(

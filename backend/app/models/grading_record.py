@@ -37,6 +37,8 @@ class GradingRecord(Base):
     total_score: Mapped[float | None] = mapped_column(Numeric(8, 2), nullable=True)
     auto_score: Mapped[float | None] = mapped_column(Numeric(8, 2), nullable=True)
     ai_score: Mapped[float | None] = mapped_column(Numeric(8, 2), nullable=True)
+    review_score: Mapped[float | None] = mapped_column(Numeric(8, 2), nullable=True, comment='HR复核分数')
+    review_comment: Mapped[str | None] = mapped_column(Text, nullable=True, comment='HR复核备注')
     passed: Mapped[bool | None] = mapped_column(nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

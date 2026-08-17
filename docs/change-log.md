@@ -2,7 +2,143 @@
 
 > **本文件记录项目重大技术变更索引，不记录详细开发过程。**
 >
-> 最后更新：2026-08-12
+> 最后更新：2026-08-13
+
+# S7.2 start-system.bat 前端启动路径修复
+
+**时间**：2026-08-13
+**版本**：S7.2
+**结果**：✅ 完成
+
+**问题描述**：
+start-system.bat 启动时 Backend 和 AI Service 正常，但 Frontend 启动失败。手动在 frontend 目录执行 `npm run dev` 可以正常启动。
+
+**根因**：
+`start` 命令打开新 CMD 窗口时，新窗口的工作目录继承自父进程，而非 `pushd` 切换的目录。导致新窗口在错误目录（如 `C:\Windows\System32`）下执行 `npm run dev`，找不到 `package.json`。
+
+**修复方案**：
+使用 `start` 命令的 `/d` 参数显式指定新窗口的工作目录：
+
+```bat
+# 修复前
+pushd "%BASEDIR%frontend"
+start "AI-Exam Frontend" cmd /k "npm run dev"
+popd
+
+# 修复后
+pushd "%BASEDIR%frontend"
+start "AI-Exam Frontend" /d "%BASEDIR%frontend" cmd /k "npm run dev"
+popd
+```
+
+**修改文件**：
+| 文件 | 修改行 | 说明 |
+|------|--------|------|
+| `start-system.bat` | L64 | Backend: 添加 `/d "%BASEDIR%backend"` |
+| `start-system.bat` | L88 | AI Service: 添加 `/d "%BASEDIR%ai-service"` |
+| `start-system.bat` | L122 | Frontend: 添加 `/d "%BASEDIR%frontend"` |
+
+**测试结果**：
+- ✅ 端口 8000 (Backend) 正常
+- ✅ 端口 8001 (AI Service) 正常
+- ✅ 端口 3000 (Frontend) 正常
+- ✅ Frontend 可在 http://localhost:3000 访问
+
+---
+
+# S7.0 HR评分复核功能
+
+**时间**：2026-08-13
+**版本**：S7.0
+**结果**：✅ 完成
+
+**开发目标**：
+将AI自动评分结果页面优化为「AI评分 + HR人工复核」模式，支持HR手动调整分数并添加复核备注。
+
+**新增功能**：
+1. ✅ 顶部评分区域优化：删除客观题/AI评分卡片，保留系统总分，新增HR复核分数输入
+2. ✅ HR复核备注功能：支持多行文本记录修改原因
+3. ✅ 最终成绩显示逻辑：有HR复核分数时优先显示复核分数
+4. ✅ AI评分详情折叠展示：保留AI原始评分数据，支持展开查看
+5. ✅ 复核分数校验：分数范围校验（0 <= score <= 试卷总分）
+
+**修改文件**：
+
+| 文件 | 操作 | 说明 |
+|------|------|------|
+| `backend/app/models/grading_record.py` | 修改 | 新增 review_score、review_comment 字段 |
+| `backend/app/schemas/grading.py` | 修改 | 新增 HRReviewUpdateRequest Schema，更新 GradingResultDetailResponse |
+| `backend/app/services/grading_service.py` | 修改 | 新增 update_hr_review 方法，分数校验逻辑 |
+| `backend/app/api/v1/endpoints/grading_results.py` | 修改 | 新增 PUT /results/{exam_record_id}/review 接口 |
+| `backend/alembic/versions/f1a2b3c4d5e6_add_hr_review_fields.py` | 新建 | Alembic 迁移文件 |
+| `frontend/src/api/gradingResult.js` | 修改 | 新增 updateHRReview 方法 |
+| `frontend/src/views/admin/grading/GradingResultDetail.vue` | 修改 | 页面重构，新增复核功能 |
+
+**数据库变更**：
+```sql
+ALTER TABLE grading_record ADD COLUMN review_score NUMERIC(8,2) NULL COMMENT 'HR复核分数';
+ALTER TABLE grading_record ADD COLUMN review_comment TEXT NULL COMMENT 'HR复核备注';
+```
+
+**API变更**：
+- 新增 `PUT /api/v1/grading/results/{exam_record_id}/review`
+- 请求体：`{ "review_score": float, "review_comment": string }`
+- 权限：HR/Admin
+
+**显示逻辑**：
+- 最终成绩 = review_score（如果存在） || total_score（系统总分）
+- 原AI评分数据（auto_score、ai_score）保留不变
+
+---
+
+# S7.1 启动脚本全面优化
+
+**时间**：2026-08-13
+**版本**：S7.1
+**结果**：✅ 完成
+
+**优化目标**：
+重新设计启动/关闭脚本，确保开发环境稳定可靠，解决旧脚本存在的启动后代码不生效、无法发现启动失败、端口清理不完全等问题。
+
+**优化内容**：
+
+| # | 问题 | 优化方案 |
+|---|------|----------|
+| 1 | 后端代码修改后仍运行旧版本 | 所有 uvicorn 启动增加 `--reload` 参数 |
+| 2 | 服务启动失败无法发现 | 新增端口监听检查机制，每个服务启动后验证端口是否就绪，超时30秒则报错并暂停 |
+| 3 | 端口清理不完全 | 按端口精确清理，增加 `netstat` 二次验证 |
+| 4 | 路径兼容问题 | 使用 `%~dp0` 获取脚本所在目录，支持任意电脑路径运行 |
+| 5 | bat 中文乱码 | 增加 `chcp 65001 >nul` 切换到 UTF-8 编码页 |
+| 6 | 启动完成提示不代表服务可用 | 新增端口验证循环，确认服务真实监听后才标记成功 |
+| 7 | 前端依赖未安装自动检测 | 启动前检查 `node_modules` 是否存在，不存在则自动执行 `npm install` |
+
+**修改文件**：
+| 文件 | 操作 | 说明 |
+|------|------|------|
+| `start-system.bat` | 重写 | 6步启动流程，含端口验证、错误处理、--reload |
+| `stop-system.bat` | 重写 | 3步关闭流程，含二次验证、进程计数 |
+
+**启动流程**：
+1. 验证目录结构（backend/ai-service/frontend）
+2. 清理旧服务（按端口精确清理 + 关闭AI-Exam窗口）
+3. 启动 Backend（--reload，30秒超时检测）
+4. 启动 AI Service（--reload，30秒超时检测）
+5. 启动 Frontend（自动检测 node_modules，40秒超时检测）
+6. 输出访问地址，5秒后自动打开浏览器
+
+**关闭流程**：
+1. 按端口（8000/8001/3000）精确终止进程
+2. 关闭 AI-Exam 标题窗口
+3. 等待3秒后二次验证端口是否已释放
+
+**测试结果**：
+- ✅ stop-system.bat：成功关闭3个服务
+- ✅ start-system.bat：3个服务正常启动
+- ✅ --reload 生效：后端代码修改后接口立即生效
+- ✅ Swagger 文档：http://localhost:8000/docs 正常访问
+- ✅ 前端页面：http://localhost:3000 正常访问
+
+---
 
 # S5.7-G Windows一键启动脚本
 

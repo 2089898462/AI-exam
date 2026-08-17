@@ -10,7 +10,7 @@ export const examApi = {
   closeExam: (id) => request.post(`/exams/${id}/close`),
   cloneExam: (id, newTitle) => {
     const params = newTitle ? { new_title: newTitle } : {}
-    return request.post(`/exams/${id}/clone`, { params })
+    return request.post(`/exams/${id}/clone`, null, { params })
   },
   importExam: (id, file) => {
     const formData = new FormData()

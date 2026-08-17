@@ -16,8 +16,15 @@
       <el-table-column prop="content" label="题目内容" min-width="300" show-overflow-tooltip />
       <el-table-column prop="score" label="分数" width="80" />
       <el-table-column prop="sort_order" label="排序" width="80" />
-      <el-table-column label="操作" width="100" fixed="right">
+      <el-table-column label="操作" width="140" fixed="right">
         <template #default="{ row }">
+          <el-button
+            size="small"
+            type="primary"
+            link
+            :disabled="readonly"
+            @click="handleEdit(row)"
+          >编辑</el-button>
           <el-button
             size="small"
             type="danger"
@@ -44,7 +51,7 @@ const props = defineProps({
   readonly: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['delete'])
+const emit = defineEmits(['delete', 'edit'])
 
 const localQuestions = ref([...props.questions])
 
@@ -62,6 +69,10 @@ const questionTypeText = (type) => ({
   true_false: '判断题',
   short_answer: '问答题',
 })[type] || type
+
+function handleEdit(row) {
+  emit('edit', row)
+}
 
 async function handleDelete(row) {
   try {

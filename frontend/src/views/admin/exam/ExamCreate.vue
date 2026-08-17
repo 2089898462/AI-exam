@@ -70,7 +70,7 @@
               导入 JSON
             </el-button>
           </el-upload>
-          <el-button type="success" :disabled="!isEdit">
+          <el-button type="success" :disabled="!isEdit" @click="openFormDialog()">
             <el-icon><Plus /></el-icon>
             手动添加题目
           </el-button>
@@ -101,6 +101,12 @@
         <el-button type="primary" :loading="submitting" @click="handleSave">保存</el-button>
       </div>
     </el-card>
+
+    <QuestionFormDialog
+      v-model="showFormDialog"
+      :exam-id="route.params.id"
+      @success="handleFormSuccess"
+    />
   </div>
 </template>
 
@@ -110,6 +116,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, Upload, Plus } from '@element-plus/icons-vue'
 import { examApi } from '@/api'
+import QuestionFormDialog from '@/components/exam/QuestionFormDialog.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -117,6 +124,7 @@ const formRef = ref(null)
 const loading = ref(false)
 const submitting = ref(false)
 const questionList = ref([])
+const showFormDialog = ref(false)
 
 const isEdit = computed(() => !!route.params.id)
 
@@ -220,6 +228,18 @@ function handleJsonImport(file) {
 
 function removeQuestion(index) {
   questionList.value.splice(index, 1)
+}
+
+function openFormDialog() {
+  if (!isEdit.value) {
+    ElMessage.warning('请先保存考试后再添加题目')
+    return
+  }
+  showFormDialog.value = true
+}
+
+function handleFormSuccess() {
+  loadExam()
 }
 
 onMounted(loadExam)

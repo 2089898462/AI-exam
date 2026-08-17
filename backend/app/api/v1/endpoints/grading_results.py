@@ -1,7 +1,7 @@
 """
 评分结果端点
 HR 后台查询评分结果
-包括评分结果列表和详情查询
+包括评分结果列表、详情查询和HR复核
 """
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
@@ -12,6 +12,7 @@ from app.models.user import User
 from app.schemas.grading import (
     GradingResultDetailResponse,
     GradingResultListResponse,
+    HRReviewUpdateRequest,
 )
 from app.services.grading_service import GradingService
 from app.utils.response import ApiResponse
@@ -60,4 +61,25 @@ async def get_grading_result_detail(
     """
     service = GradingService(db)
     result = service.get_grading_result_detail(exam_record_id)
+    return ApiResponse.success(data=result)
+
+
+@router.put("/results/{exam_record_id}/review", response_model=GradingResultDetailResponse)
+async def update_hr_review(
+    exam_record_id: int,
+    data: HRReviewUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_hr_or_admin),
+):
+    """更新HR复核分数（HR/Admin）
+
+    HR输入复核分数和备注，保存到评分记录中
+    最终成绩优先显示HR复核分数
+    """
+    service = GradingService(db)
+    result = service.update_hr_review(
+        exam_record_id=exam_record_id,
+        review_score=data.review_score,
+        review_comment=data.review_comment,
+    )
     return ApiResponse.success(data=result)

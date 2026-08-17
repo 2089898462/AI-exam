@@ -15,6 +15,14 @@
           </div>
           <div class="header-right">
             <el-button
+              type="success"
+              :disabled="!canEdit"
+              @click="openFormDialog()"
+            >
+              <el-icon><Plus /></el-icon>
+              添加题目
+            </el-button>
+            <el-button
               type="primary"
               :disabled="!canImport"
               @click="showImportDialog = true"
@@ -53,8 +61,9 @@
           <QuestionTable
             :exam-id="exam.id"
             :questions="exam.questions || []"
-            :readonly="exam.status !== 'draft'"
+            :readonly="!canEdit"
             @delete="handleQuestionDelete"
+            @edit="handleQuestionEdit"
           />
         </el-tab-pane>
         <el-tab-pane label="参与人员" name="participants">
@@ -68,6 +77,13 @@
       :exam-id="exam.id"
       @success="handleImportSuccess"
     />
+
+    <QuestionFormDialog
+      v-model="showFormDialog"
+      :exam-id="exam.id"
+      :edit-data="editingQuestion"
+      @success="handleFormSuccess"
+    />
   </div>
 </template>
 
@@ -75,9 +91,10 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowLeft, Upload } from '@element-plus/icons-vue'
+import { ArrowLeft, Upload, Plus } from '@element-plus/icons-vue'
 import { examApi } from '@/api'
 import ImportExamDialog from '@/components/exam/ImportExamDialog.vue'
+import QuestionFormDialog from '@/components/exam/QuestionFormDialog.vue'
 import QuestionTable from '@/components/exam/QuestionTable.vue'
 import ExamParticipants from './ExamParticipants.vue'
 
@@ -86,12 +103,15 @@ const route = useRoute()
 const loading = ref(false)
 const exam = ref({})
 const showImportDialog = ref(false)
+const showFormDialog = ref(false)
+const editingQuestion = ref(null)
 const activeTab = ref('questions')
 
 const statusText = (s) => ({ draft: '草稿', published: '已发布', closed: '已关闭' }[s] || s)
 const statusTagType = (s) => ({ draft: 'info', published: 'success', closed: 'danger' }[s] || 'info')
 
 const canImport = computed(() => exam.value.status === 'draft')
+const canEdit = computed(() => exam.value.status === 'draft')
 
 async function loadDetail() {
   loading.value = true
@@ -120,6 +140,31 @@ async function handleClose() {
 
 function handleImportSuccess() {
   showImportDialog.value = false
+  loadDetail()
+}
+
+function openFormDialog() {
+  console.log('[DEBUG] openFormDialog called')
+  console.log('[DEBUG] canEdit:', canEdit.value, 'status:', exam.value.status)
+  console.log('[DEBUG] exam.id:', exam.value.id)
+  
+  if (!canEdit.value) {
+    ElMessage.warning('只有草稿状态的考试才能添加题目')
+    return
+  }
+  
+  editingQuestion.value = null
+  showFormDialog.value = true
+  console.log('[DEBUG] showFormDialog set to:', showFormDialog.value)
+  ElMessage.success('打开添加题目对话框')
+}
+
+function handleQuestionEdit(question) {
+  editingQuestion.value = question
+  showFormDialog.value = true
+}
+
+function handleFormSuccess() {
   loadDetail()
 }
 

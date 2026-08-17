@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.permissions import require_hr_or_admin
 from app.db.session import get_db
 from app.models.user import User
-from app.schemas.question import QuestionCreate, QuestionResponse
+from app.schemas.question import QuestionCreate, QuestionResponse, QuestionUpdate
 from app.services.question_service import QuestionService
 from app.utils.response import ApiResponse
 
@@ -30,6 +30,24 @@ async def create_question(
         **data.model_dump(exclude_unset=True),
     )
     return ApiResponse.created(data=QuestionResponse.model_validate(question).model_dump())
+
+
+@router.put("/{question_id}")
+async def update_question(
+    question_id: int,
+    data: QuestionUpdate = Body(...),
+    exam_id: int = Query(..., description="考试 ID"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_hr_or_admin),
+):
+    service = QuestionService(db)
+    question = service.update_question(
+        exam_id=exam_id,
+        question_id=question_id,
+        current_user=current_user,
+        **data.model_dump(exclude_unset=True),
+    )
+    return ApiResponse.success(data=QuestionResponse.model_validate(question).model_dump())
 
 
 @router.delete("/{question_id}")

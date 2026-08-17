@@ -2,7 +2,7 @@
 
 > **本文件为 AI Agent 必读文档。每次接手本项目必须首先阅读此文件。**
 >
-> 最后更新：2026-08-07（S5.7-F 系统黑盒业务验收 — 通过）
+> 最后更新：2026-08-13（S7.1 启动脚本全面优化 — 已完成）
 
 ---
 
@@ -184,6 +184,108 @@ frontend/src/
 
 **下一步**：
 - 进入 S5.8 阶段开发
+
+---
+
+## S6.0.1 手动添加题目功能 — 已完成 ✅
+
+### 开发目标
+为 HR 提供手动添加题目的能力，支持不通过 JSON 导入直接创建题目。
+
+### 新增功能
+1. ✅ 手动添加题目对话框（QuestionFormDialog.vue）
+2. ✅ 支持题型选择：单选题、简答题（多选题/判断题预留）
+3. ✅ 动态选项增删（单选/多选）
+4. ✅ "保存" 和 "保存并继续添加" 两种操作模式
+5. ✅ 题目编辑入口（QuestionTable.vue）
+
+### 修改文件
+| 文件 | 操作 | 说明 |
+|------|------|------|
+| `frontend/src/components/exam/QuestionFormDialog.vue` | **新建** | 添加题目对话框组件 |
+| `frontend/src/views/admin/exam/ExamDetail.vue` | 修改 | 添加按钮 + 对话框集成 |
+| `frontend/src/components/exam/QuestionTable.vue` | 修改 | 预留编辑入口 |
+| `frontend/src/api/question.js` | 修改 | 添加 update 方法 |
+
+### 数据格式（保持现有结构）
+**单选题**
+```json
+{
+  "type": "single_choice",
+  "content": "题目内容",
+  "options": [{"label": "A", "content": "选项A"}],
+  "answer": "A",
+  "score": 10
+}
+```
+
+**简答题**
+```json
+{
+  "type": "short_answer",
+  "content": "题目内容",
+  "answer": "标准答案",
+  "score": 15
+}
+```
+
+### 后端依赖
+- 现有接口已支持：`POST /api/v1/questions`
+- 现有 Service 已支持：`create_question()` + `_validate_question_data()`
+- **无需后端修改**
+- **无需数据库迁移**
+
+### 校验规则
+| 题型 | 校验项 | 规则 |
+|------|--------|------|
+| 单选题 | 选项数量 | ≥ 2 个，内容非空 |
+| 单选题 | 正确答案 | 必须是已添加选项之一 |
+| 简答题 | 标准答案 | 非空 |
+| 通用 | 分值 | ≥ 0 |
+| 通用 | 题目内容 | 非空 |
+
+### 后续扩展
+- 多选题：取消禁用态，补充校验逻辑
+- 判断题：true/false 选项逻辑
+- 题目编辑功能：已预留 @edit 事件
+
+---
+
+## S7.0 HR评分复核功能 — 已完成 ✅
+
+### 开发目标
+将AI自动评分结果页面优化为「AI评分 + HR人工复核」模式，支持HR手动调整分数并添加复核备注。
+
+### 新增功能
+1. ✅ 顶部评分区域优化：删除客观题/AI评分卡片，保留系统总分，新增HR复核分数输入
+2. ✅ HR复核备注功能：支持多行文本记录修改原因
+3. ✅ 最终成绩显示逻辑：有HR复核分数时优先显示复核分数
+4. ✅ AI评分详情折叠展示：保留AI原始评分数据，支持展开查看客观题得分和AI简答题评分详情
+5. ✅ 复核分数校验：分数范围校验（0 <= score <= 试卷总分）
+
+### 修改文件
+| 文件 | 操作 | 说明 |
+|------|------|------|
+| `backend/app/models/grading_record.py` | 修改 | 新增 review_score、review_comment 字段 |
+| `backend/app/schemas/grading.py` | 修改 | 新增 HRReviewUpdateRequest Schema |
+| `backend/app/services/grading_service.py` | 修改 | 新增 update_hr_review 方法 |
+| `backend/app/api/v1/endpoints/grading_results.py` | 修改 | 新增复核更新接口 |
+| `backend/alembic/versions/f1a2b3c4d5e6_add_hr_review_fields.py` | 新建 | Alembic 迁移文件 |
+| `frontend/src/api/gradingResult.js` | 修改 | 新增 updateHRReview 方法 |
+| `frontend/src/views/admin/grading/GradingResultDetail.vue` | 修改 | 页面重构 |
+
+### 数据库变更
+```sql
+ALTER TABLE grading_record ADD COLUMN review_score NUMERIC(8,2) NULL;
+ALTER TABLE grading_record ADD COLUMN review_comment TEXT NULL;
+```
+
+### API变更
+- `PUT /api/v1/grading/results/{exam_record_id}/review` — 提交HR复核
+
+### 显示逻辑
+- 最终成绩 = review_score（如果存在）|| total_score（系统总分）
+- 原AI评分数据（auto_score、ai_score）保留不变
 
 ---
 
@@ -528,35 +630,43 @@ scoring_template ──1:N──▶ scoring_rule（评分规则）
 
 项目根目录下提供了两个批处理脚本：
 
-### start-system.bat - 一键启动
+### start-system.bat - 一键启动（S7.1 优化版）
 
 双击运行即可自动启动所有服务：
-1. 检查 Python/Node.js 运行环境
-2. 清理可能占用的端口（8000/8001/3000）
-3. 启动 Backend（端口 8000）
-4. 启动 AI Service（端口 8001）
-5. 启动 Frontend（端口 3000）
-6. 自动打开浏览器
+1. **验证目录结构**：检查 backend/ai-service/frontend 目录是否存在
+2. **清理旧服务**：按端口（8000/8001/3000）精确清理占用进程 + 关闭 AI-Exam 窗口
+3. **启动 Backend**：`python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload`（30秒端口验证）
+4. **启动 AI Service**：`python -m uvicorn main:app --host 0.0.0.0 --port 8001 --reload`（30秒端口验证）
+5. **启动 Frontend**：`npm run dev`（自动检测 node_modules，40秒端口验证）
+6. **输出访问地址** + 5秒后自动打开浏览器（login + candidate）
 
-### stop-system.bat - 一键关闭
+**关键特性**：
+- `--reload` 参数确保后端代码修改后自动生效
+- 端口验证循环确保服务真实可用后才标记成功
+- 失败时暂停显示错误原因，方便排查
+- 使用 `%~dp0` 支持任意路径运行
+- `chcp 65001` 防止中文乱码
+
+### stop-system.bat - 一键关闭（S7.1 优化版）
 
 双击运行即可关闭所有服务：
-- 通过端口精确定位进程
-- 确认后安全关闭
-- 不影响其他无关程序
+1. 按端口（8000/8001/3000）精确终止进程
+2. 关闭 AI-Exam 标题窗口
+3. 等待3秒后二次验证端口是否已释放
+4. 输出停止进程计数和验证结果
 
 ## 手动启动命令
 
 如需单独启动各服务，可执行以下命令：
 
 ```bash
-# Backend (端口 8000)
+# Backend (端口 8000, --reload 确保代码修改后自动生效)
 cd backend
-python -m uvicorn main:app --host 0.0.0.0 --port 8000
+python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 # AI Service (端口 8001)
 cd ai-service
-python -m uvicorn main:app --host 0.0.0.0 --port 8001
+python -m uvicorn main:app --host 0.0.0.0 --port 8001 --reload
 
 # Frontend (端口 3000)
 cd frontend
