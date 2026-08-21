@@ -1,56 +1,76 @@
-# Python
+# ============ Python ============
 __pycache__/
+**pycache**/
 *.py[cod]
 *.egg-info/
 .venv/
 venv/
 env/
 
-# Node
+# ============ Node / Frontend ============
 node_modules/
 dist/
 *.tgz
+.vite/
 
-# IDE
+# ============ IDE ============
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
 
-# Env
+# ============ Environment Variables (SENSITIVE) ============
 .env
 .env.local
 .env.*.local
-!.env.example
+frontend/.env
+backend/.env
+ai-service/.env
+!frontend/.env.example
+!backend/.env.example
+!ai-service/.env.example
 
-# Database
+# ============ Database (SENSITIVE - contains user data) ============
 *.db
+*.sqlite
 *.sqlite3
 backend/exam_system.db
+backend/exam_system_backup_*.db
 
-# OS
+# ============ OS ============
 .DS_Store
 Thumbs.db
 Desktop.ini
 ehthumbs.db
 
-# Logs
+# ============ Logs ============
 *.log
 logs/
 
-# Build
+# ============ Build ============
 build/
 *.egg
 
-# Test
+# ============ Test ============
 .pytest_cache/
 .coverage
 htmlcov/
 coverage.xml
 
-# Temp
+# ============ Temp / Scripts (not part of production) ============
 temp/
 tmp/
 *.tmp
 temp_*
+snapshot.js
+browser-snapshot.js
+diagnose_ai_env.py
+check_monitor_data.py
+check_monitor_detail.py
+start_8002.py
+
+# ============ Test data (not production) ============
+test_exam.json
+test_exam2.json
+local_ip.txt

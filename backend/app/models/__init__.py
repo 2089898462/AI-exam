@@ -18,6 +18,7 @@ from app.models.position import Position
 from app.models.scoring_template import ScoringTemplate
 from app.models.scoring_rule import ScoringRule
 from app.models.candidate_analysis_report import CandidateAnalysisReport
+from app.models.exam_monitor_summary import ExamMonitorSummary
 
 __all__ = [
     "User",
@@ -37,4 +38,5 @@ __all__ = [
     "ScoringTemplate",
     "ScoringRule",
     "CandidateAnalysisReport",
+    "ExamMonitorSummary",
 ]

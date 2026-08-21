@@ -110,7 +110,56 @@ frontend/src/
 # 4. 当前开发阶段
 
 ## 当前阶段
-**S5.7-F 系统黑盒业务验收 — 已通过 ✅**
+**S8.4.7 考试开始前诚信警示弹窗 — 已完成 ✅（2026-08-21）**
+
+### S8.4.7 关键信息（2026-08-21）
+
+**修改内容**：
+1. 首次开始考试（not_started）前弹出不可关闭的"考试诚信承诺提示"威慑弹窗（ElMessageBox，warning 类型），文案覆盖：全程智能监考监测 / 禁止切屏锁屏 / 禁止小窗分屏悬浮窗及搜索 AI 工具查答案 / 切屏自动记录提交人工审核 / 独立作答。
+2. 弹窗无取消键、无关闭X、ESC 与点遮罩均无效，必须点击"我已知悉，开始考试"才走 startExam（监考启动与倒计时开始均在确认之后，不受影响）。
+3. 仅首次开始弹出；断点恢复（in_progress）、已提交状态不弹。
+4. 移动端适配：≤480px 弹窗宽 88%、确认按钮 ≥44px 触摸目标（全局 style，挂 body）。
+5. 决策背景：经评估，小窗/悬浮窗检测技术上有天花板（页面可见不失焦场景纯前端无法可靠识别），采用"事前威慑提示"方案替代检测功能。
+
+**修改文件**：`frontend/src/views/exam/Exam.vue`（仅此一个文件，未动其他逻辑）。
+
+**上一阶段**：S8.4.6 监考闭环回归验证与稳定性优化 — 已完成 ✅（2026-08-21）
+
+### S8.4.6 关键信息（2026-08-21）
+
+**验证结论**：S8.4.4（状态恢复/持久化）与 S8.4.5（HR 展示）全链路回归通过：
+1. 刷新恢复：倒计时基于服务器时间锚点（started_at/server_time），刷新后继续递减不重置；监考经 sessionStorage（`exam_monitor_{recordId}`）恢复，不产生重复记录（Node 端到端验证：恢复后 events/leaveCount 不变）。
+2. 切屏检测：leave/return 成对生成，duration≈实际离开时长；快速切屏（100ms 合并窗口 + action 抢占）不丢事件。
+3. 浏览器被杀恢复：重进自动生成 `leave_recovered` 补偿事件（duration=被杀到重进的时长）、补全最后一条 leave 的 duration/tags、leaveCount+1，无重复累计。
+4. HR 详情：正常考试（events=[]）显示无异常；多异常组合正确产出 long_leave 等标签与风险等级；历史数据（无 monitor 字段/旧格式数组事件）默认结构兜底。
+5. 稳定性修复 2 处：`_calculate_max_single_duration` 纳入 leave_recovered（原 long_leave 漏报）；useMonitor 调试日志改 `mlog()`（MONITOR_DEBUG：DEV 自动开、生产关、localStorage monitor_debug=1 临时开，warn/error 无条件保留）。
+6. 提交成功后 `clearPersistedData()` 清缓存、失败保留；多 recordId 标签页数据隔离；MAX_EVENTS=100 截断正常。
+
+**测试方式**：后端风险分析单测 8/8；前端 Node 端到端（esbuild 打包真实 useMonitor.js + mock 浏览器环境，生产模式）18/18；后端服务健康检查 200。
+
+**上一阶段**：S8.4.5 监考异常展示优化 — 已完成 ✅（2026-08-21）
+
+### S8.4.5 关键信息（2026-08-21）
+
+**修改内容**：
+1. HR 成绩详情页监考事件全部中文化+图标（`monitorEventMap`），未知事件兜底"其他监考事件"；时间线含详情说明（`eventDescription` 按类型生成）。
+2. 风险摘要卡片新增"主要原因"结构化列表（`riskReasonList`）：离开概况 / 超5分钟离开 / 网络关联次数 / 异常中断恢复次数 / 高频切换 / 刷新尝试，兜底显示 risk_reason。
+3. 审核建议 alert 改为"💡 审核建议"标题 + 按等级描述（normal：无明显异常；medium：建议人工查看异常时间段答题情况；high：建议重点复核离开期间的答题内容）。
+4. 后端 `_generate_monitor_analysis` 按事件类型注入中文标签（异常中断恢复/网络异常/设备方向变化），`_generate_behavior_details` 覆盖 leave_recovered / network_offline / orientation_change / refresh_attempt 可读描述。
+5. 兼容性：历史考试无 analysis/events 字段正常兜底，无数据库/API 变更。
+
+**上一阶段**：S8.4.4 考试状态恢复与监考数据持久化 — 已完成 ✅（2026-08-21，待真机回归）
+
+### S8.4.4 关键信息（2026-08-21）
+
+**修复内容**：
+1. 考试倒计时改为服务器时间锚点计算：`GET /exam-records/{id}/paper` 新增返回 `started_at` / `server_time`，前端经时钟偏差校准计算真实剩余时间。刷新页面/切后台返回/断网恢复后倒计时不再重置，用户修改系统时间无法影响考试时间。
+2. useMonitor.js 引入 sessionStorage 持久化（key: `exam_monitor_{recordId}`）：leave/return/横竖屏/网络事件实时写入；`startMonitoring(recordId)` 启动时恢复历史数据而非清零；上次会话在页面隐藏状态被终止（浏览器被系统回收）时，重新进入自动生成 `leave_recovered` 补偿事件并结算时长；提交成功后 Exam.vue 调用 `monitor.clearPersistedData()` 清除缓存（提交失败保留）。
+3. S8.4.3-d（同日早前）：修复 `scheduleAction` 合并窗口丢弃 return 事件的缺陷，MERGE_WINDOW 300ms→100ms。
+
+**待验证（需真机测试）**：刷新恢复、切后台 30s 返回、杀浏览器重进、iOS Safari 兼容性。
+
+**历史阶段**：S5.7-F 系统黑盒业务验收 — 已通过 ✅（2026-08-07，详见下方）
 
 ### S5.7-F 黑盒测试结果（2026-08-07）
 

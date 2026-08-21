@@ -91,6 +91,19 @@
             <span v-else>-</span>
           </template>
         </el-table-column>
+        <!-- S8.4.3: 监考风险列 -->
+        <el-table-column label="监考风险" width="100">
+          <template #default="{ row }">
+            <el-tag
+              v-if="row.has_monitor_data"
+              :type="monitorRiskTagType(row.monitor_risk_level)"
+              size="small"
+            >
+              {{ monitorRiskText(row.monitor_risk_level) }}
+            </el-tag>
+            <span v-else class="text-muted">-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="completed_at" label="完成时间" width="180">
           <template #default="{ row }">
             {{ row.completed_at || '-' }}
@@ -141,6 +154,21 @@ const statusTagType = (s) => ({ pending: 'info', grading: 'warning', completed: 
 const gradingTypeText = (t) => ({ auto: '自动', ai: 'AI', hybrid: '混合' }[t] || t)
 const gradingTypeTag = (t) => ({ auto: '', ai: 'warning', hybrid: 'info' }[t] || '')
 
+// S8.4.3: 监考风险等级映射
+const monitorRiskText = (level) => ({
+  normal: '正常',
+  low: '低风险',
+  medium: '中风险',
+  high: '高风险',
+}[level] || '未知')
+
+const monitorRiskTagType = (level) => ({
+  normal: 'success',
+  low: 'warning',
+  medium: 'warning',
+  high: 'danger',
+}[level] || 'info')
+
 function getFinalScore(row) {
   if (row.review_score !== null && row.review_score !== undefined) {
     return row.review_score
@@ -184,6 +212,10 @@ function handleSearch() {
 }
 
 function goDetail(examRecordId) {
+  if (examRecordId === null || examRecordId === undefined || examRecordId === '') {
+    ElMessage.warning('该考试记录缺少有效ID，无法查看详情')
+    return
+  }
   router.push(`/admin/grading/${examRecordId}`)
 }
 

@@ -116,11 +116,12 @@ function handleChange() {
 .choice-option {
   display: flex;
   align-items: flex-start;
-  padding: 12px 16px;
-  border: 1px solid #e4e7ed;
-  border-radius: 8px;
+  padding: 14px 16px;
+  border: 1.5px solid #e4e7ed;
+  border-radius: 10px;
   transition: all 0.2s;
   cursor: pointer;
+  min-height: 44px;
 }
 
 .choice-option:hover {
@@ -130,7 +131,13 @@ function handleChange() {
 
 .choice-option :deep(.el-radio__input),
 .choice-option :deep(.el-checkbox__input) {
-  margin-right: 10px;
+  margin-right: 12px;
+}
+
+.choice-option :deep(.el-radio__input .el-radio__inner),
+.choice-option :deep(.el-checkbox__input .el-checkbox__inner) {
+  width: 18px;
+  height: 18px;
 }
 
 .choice-option :deep(.el-radio__input.is-checked + .el-radio__label),
@@ -144,14 +151,62 @@ function handleChange() {
   border-color: #409eff;
 }
 
+.choice-option:has(.el-radio__input.is-checked),
+.choice-option:has(.el-checkbox__input.is-checked) {
+  border-color: #409eff;
+  background: #ecf5ff;
+}
+
 .option-label {
   font-weight: 600;
   margin-right: 6px;
   color: #303133;
+  font-size: 15px;
 }
 
 .option-content {
   color: #606266;
   line-height: 1.6;
+  font-size: 14px;
+}
+
+/* 移动端优化 */
+@media (max-width: 768px) {
+  .choice-question {
+    gap: 10px;
+  }
+
+  .choice-option {
+    padding: 14px 14px;
+    border-radius: 10px;
+  }
+
+  .choice-option :deep(.el-radio__input),
+  .choice-option :deep(.el-checkbox__input) {
+    margin-right: 10px;
+  }
+
+  .option-label {
+    font-size: 15px;
+  }
+
+  .option-content {
+    font-size: 14px;
+    line-height: 1.55;
+  }
+}
+
+@media (max-width: 380px) {
+  .choice-option {
+    padding: 12px;
+  }
+
+  .option-label {
+    font-size: 14px;
+  }
+
+  .option-content {
+    font-size: 13px;
+  }
 }
 </style>

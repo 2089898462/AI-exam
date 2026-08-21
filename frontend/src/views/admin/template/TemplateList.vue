@@ -36,7 +36,7 @@
       <el-table v-loading="loading" :data="templateList" border stripe>
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="name" label="模板名称" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip>
+        <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="row.status === 'active' ? 'success' : 'info'">
