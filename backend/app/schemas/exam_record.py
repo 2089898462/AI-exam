@@ -151,3 +151,6 @@ class ExamPaperResponse(BaseSchema):
     record_id: int
     candidate_name: str
     status: str
+    # S8.4.4: 考试时间恢复字段（用于前端基于服务器时间计算倒计时，防止刷新/切后台后时间重置）
+    started_at: Optional[datetime] = None
+    server_time: Optional[datetime] = None

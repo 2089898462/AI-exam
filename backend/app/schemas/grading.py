@@ -130,6 +130,8 @@ class GradingResultItem(BaseSchema):
     passed: Optional[bool] = None
     completed_at: Optional[str] = None
     created_at: Optional[str] = None
+    has_monitor_data: bool = Field(default=False, description="是否存在监考数据")
+    monitor_risk_level: str = Field(default="normal", description="监考风险等级: normal/low/medium/high")
 
     @computed_field
     @property
@@ -175,6 +177,28 @@ class GradingStatisticsResponse(BaseSchema):
     correct_rate: float
 
 
+class MonitorSummaryResponse(BaseSchema):
+    """监考汇总数据响应"""
+    has_monitor_data: bool = Field(default=False, description="是否存在监考数据")
+    risk_level: str = Field(default="normal", description="风险等级: normal/low/medium/high")
+    leave_count: int = Field(default=0, description="离开次数")
+    total_duration: int = Field(default=0, description="累计离开时长(秒)")
+    events: list = Field(default_factory=list, description="详细事件列表")
+
+
+class MonitorAnalysisResponse(BaseSchema):
+    """监考数据分析响应（动态计算，不存储）"""
+    has_analysis: bool = Field(default=False, description="是否存在监考分析数据")
+    exam_duration: int = Field(default=0, description="考试总时长(秒)")
+    leave_ratio: float = Field(default=0.0, description="离开时间占比(%)")
+    max_single_duration: int = Field(default=0, description="单次最长离开时长(秒)")
+    average_leave_duration: float = Field(default=0.0, description="平均每次离开时长(秒)")
+    risk_reason: str = Field(default="", description="风险原因说明")
+    behavior_tags: list = Field(default_factory=list, description="异常行为标签列表")
+    behavior_details: list = Field(default_factory=list, description="异常行为详情列表")
+    review_suggestion: str = Field(default="", description="系统审核建议")
+
+
 class GradingResultDetailResponse(BaseSchema):
     """评分结果详情响应"""
     grading_id: int
@@ -197,6 +221,8 @@ class GradingResultDetailResponse(BaseSchema):
     error_message: Optional[str] = None
     statistics: GradingStatisticsResponse
     answers: list[AnswerDetailResponse] = []
+    monitor_data: Optional[MonitorSummaryResponse] = None
+    monitor_analysis: Optional[MonitorAnalysisResponse] = None
 
     @computed_field
     @property

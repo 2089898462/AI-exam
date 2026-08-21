@@ -6,8 +6,9 @@ HR 管理端点需 JWT + 角色校验
 评分相关端点
 """
 import threading
+from datetime import datetime
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.logger import get_logger
@@ -163,6 +164,9 @@ async def get_exam_paper(
         record_id=record.id,
         candidate_name=record.candidate_name,
         status=record.status,
+        # S8.4.4: 返回考试开始时间与服务器当前时间，供前端校准倒计时
+        started_at=record.started_at,
+        server_time=datetime.now(),
     )
     return ApiResponse.success(data=data.model_dump())
 
@@ -227,6 +231,7 @@ async def get_exam_answers(
 @router.post("/{record_id}/submit")
 async def submit_exam(
     record_id: int,
+    data: dict = Body(default=None),
     db: Session = Depends(get_db),
 ):
     """提交考试（状态：in_progress → submitted）
@@ -236,7 +241,17 @@ async def submit_exam(
     2. 状态校验：not_started 禁止提交
     3. 更新状态为 submitted
     4. 记录提交时间
-    5. 后台异步触发自动评分（不阻塞响应）
+    5. 保存监考数据（如果有）
+    6. 后台异步触发自动评分（不阻塞响应）
+    
+    监考数据格式（可选）：
+    {
+        "monitor_data": {
+            "leave_count": 0,
+            "total_hidden_duration": 0,
+            "events": []
+        }
+    }
     
     AI评分在后台线程中执行：
     - 客观题自动评分（单选/多选/判断）
@@ -245,7 +260,8 @@ async def submit_exam(
     - 评分失败不影响提交结果
     """
     service = ExamRecordService(db)
-    record = service.submit_exam(record_id)
+    monitor_data = data.get("monitor_data") if data else None
+    record = service.submit_exam(record_id, monitor_data=monitor_data)
     
     # 提交成功后，后台触发自动评分
     if record.status == "submitted":

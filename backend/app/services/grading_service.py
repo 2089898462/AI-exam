@@ -4,6 +4,7 @@
 支持客观题自动评分 + 主观题 AI 评分混合流程
 """
 import asyncio
+import json
 from datetime import datetime
 
 from sqlalchemy import and_, func, or_
@@ -13,6 +14,7 @@ from app.core.logger import get_logger
 from app.exceptions import BusinessException, NotFoundException
 from app.models.answer_record import AnswerRecord
 from app.models.exam import Exam
+from app.models.exam_monitor_summary import ExamMonitorSummary
 from app.models.exam_record import ExamRecord
 from app.models.grading_record import GradingRecord
 from app.models.question import Question
@@ -689,6 +691,15 @@ class GradingService(BaseService[GradingRecord]):
         records = query.offset((page - 1) * page_size).limit(page_size).all()
 
         # 转换为响应数据
+        # S8.4.3: 批量查询监考汇总数据（避免N+1查询）
+        exam_record_ids = [r.exam_record_id for r in records]
+        monitor_map = {}
+        if exam_record_ids:
+            monitor_summaries = self.db.query(ExamMonitorSummary).filter(
+                ExamMonitorSummary.exam_record_id.in_(exam_record_ids)
+            ).all()
+            monitor_map = {ms.exam_record_id: ms for ms in monitor_summaries}
+
         items = []
         for record in records:
             exam_record = self.db.query(ExamRecord).filter(
@@ -696,6 +707,10 @@ class GradingService(BaseService[GradingRecord]):
             ).first()
             if exam_record:
                 review_val = float(record.review_score) if record.review_score is not None else None
+                # S8.4.3: 查找监考数据
+                monitor_summary = monitor_map.get(record.exam_record_id)
+                has_monitor = monitor_summary is not None
+                risk_level = monitor_summary.risk_level if monitor_summary else "normal"
                 items.append({
                     "id": record.id,
                     "exam_record_id": record.exam_record_id,
@@ -712,6 +727,9 @@ class GradingService(BaseService[GradingRecord]):
                     "passed": record.passed,
                     "completed_at": record.completed_at.isoformat() if record.completed_at else None,
                     "created_at": record.created_at.isoformat() if record.created_at else None,
+                    # S8.4.3: 监考风险字段
+                    "has_monitor_data": has_monitor,
+                    "monitor_risk_level": risk_level,
                 })
 
         return {
@@ -798,6 +816,12 @@ class GradingService(BaseService[GradingRecord]):
         correct_count = len([a for a in answers if a.is_correct])
         needs_review_count = len([a for a in answers if a.needs_review])
 
+        # 查询监考汇总数据（兼容历史考试无监考数据的情况）
+        monitor_data = self._get_monitor_summary_data(exam_record_id)
+
+        # 生成监考分析数据（动态计算）
+        monitor_analysis = self._generate_monitor_analysis(exam_record, monitor_data)
+
         result = {
             "grading_id": grading.id,
             "status": grading.status,
@@ -825,8 +849,451 @@ class GradingService(BaseService[GradingRecord]):
                 "correct_rate": round(correct_count / total_questions * 100, 1) if total_questions > 0 else 0,
             },
             "answers": answer_details,
+            "monitor_data": monitor_data,
+            "monitor_analysis": monitor_analysis,
         }
         return result
+
+    def _get_monitor_summary_data(self, exam_record_id: int) -> dict:
+        """获取监考汇总数据（兼容历史考试无监考数据的情况）
+
+        Args:
+            exam_record_id: 考试记录 ID
+
+        Returns:
+            dict: 监考数据，无数据时返回默认结构
+        """
+        # 默认结构（历史考试无监考数据时使用）
+        default_data = {
+            "has_monitor_data": False,
+            "risk_level": "normal",
+            "leave_count": 0,
+            "total_duration": 0,
+            "events": [],
+        }
+
+        try:
+            monitor_summary = self.db.query(ExamMonitorSummary).filter(
+                ExamMonitorSummary.exam_record_id == exam_record_id
+            ).first()
+
+            if monitor_summary is None:
+                return default_data
+
+            # S8.4.1: 解析详细事件列表（兼容新旧格式）
+            events = []
+            environment = None
+            analysis = None  # S8.4.2: 新增
+            if monitor_summary.detail_data:
+                try:
+                    parsed = json.loads(monitor_summary.detail_data)
+                    # 判断数据格式：旧版为纯数组，新版为 {events: [...], environment: {...}}
+                    if isinstance(parsed, list):
+                        # 旧版格式：直接是事件数组
+                        events = parsed
+                    elif isinstance(parsed, dict):
+                        # S8.4.1/S8.4.2 新版格式：结构化对象
+                        events = parsed.get('events', [])
+                        environment = parsed.get('environment', None)
+                        analysis = parsed.get('analysis', None)  # S8.4.2: 解析分析数据
+                except (json.JSONDecodeError, TypeError):
+                    logger.warning(
+                        "监考数据解析失败: record_id=%s", exam_record_id
+                    )
+                    events = []
+
+            result = {
+                "has_monitor_data": True,
+                "risk_level": monitor_summary.risk_level,
+                "leave_count": monitor_summary.leave_count,
+                "total_duration": monitor_summary.total_duration,
+                "events": events,
+            }
+            # S8.4.1: 附加环境采集数据（如有）
+            if environment:
+                result["environment"] = environment
+            # S8.4.2: 附加异常分析数据（如有）
+            if analysis:
+                result["analysis"] = analysis
+
+            return result
+
+        except Exception as e:
+            logger.error(
+                "查询监考数据失败: record_id=%s, error=%s",
+                exam_record_id,
+                str(e),
+            )
+            # 异常时返回默认数据，不影响成绩详情查询
+            return default_data
+
+    def _generate_monitor_analysis(
+        self,
+        exam_record: ExamRecord,
+        monitor_data: dict,
+    ) -> dict:
+        """生成监考数据分析（动态计算，不存储）
+
+        S8.4.2 增强：支持异常行为标签和分析数据展示
+        
+        Args:
+            exam_record: 考试记录
+            monitor_data: 监考汇总数据
+        
+        Returns:
+            dict: 监考分析数据
+        """
+        # 默认结构（无监考数据时使用）
+        default_analysis = {
+            "has_analysis": False,
+            "exam_duration": 0,
+            "leave_ratio": 0.0,
+            "max_single_duration": 0,
+            "average_leave_duration": 0.0,
+            "risk_reason": "",
+            "behavior_tags": [],  # S8.4.2: 新增
+            "behavior_details": [],  # S8.4.2: 新增
+            "review_suggestion": "",  # S8.4.3-b: 新增
+        }
+
+        try:
+            # 无监考数据，返回默认
+            if not monitor_data or not monitor_data.get("has_monitor_data", False):
+                return default_analysis
+
+            # 计算考试总时长（秒）
+            exam_duration = self._calc_exam_duration(exam_record)
+
+            # 从monitor_data获取基础数据
+            leave_count = monitor_data.get("leave_count", 0)
+            total_duration = monitor_data.get("total_duration", 0)
+            events = monitor_data.get("events", [])
+            risk_level = monitor_data.get("risk_level", "normal")
+            
+            # S8.4.2: 获取存储的异常分析数据
+            stored_analysis = monitor_data.get("analysis", {})
+            behavior_tags = list(stored_analysis.get("behavior_tags", []))
+            stored_risk_reasons = stored_analysis.get("risk_reason", [])
+
+            # S8.4.5: 根据事件类型补充中文行为标签（历史数据无存储标签时也能识别异常）
+            event_types = {e.get("type", "") for e in events} if events else set()
+            if "leave_recovered" in event_types and "异常中断恢复" not in behavior_tags:
+                behavior_tags.append("异常中断恢复")
+            if "network_offline" in event_types and "网络异常" not in behavior_tags:
+                behavior_tags.append("网络异常")
+            if "orientation_change" in event_types and "设备方向变化" not in behavior_tags:
+                behavior_tags.append("设备方向变化")
+            
+            # S8.4.2: 获取已计算的指标（如有）
+            max_single_duration = stored_analysis.get("max_single_duration", 0)
+            if max_single_duration == 0:
+                max_single_duration = self._calc_max_single_duration(events)
+            
+            leave_frequency = stored_analysis.get("leave_frequency", 0)
+            rapid_trips = stored_analysis.get("rapid_trips", 0)
+            max_leave_density = stored_analysis.get("max_leave_density", 0.0)
+
+            # 计算离开时间占比（%）
+            leave_ratio = self._calc_leave_ratio(total_duration, exam_duration)
+
+            # 计算平均每次离开时长（秒）
+            average_leave_duration = self._calc_average_leave_duration(
+                total_duration, leave_count
+            )
+
+            # S8.4.2: 生成增强版风险原因说明
+            risk_reason = self._generate_risk_reason_v2(
+                risk_level=risk_level,
+                leave_count=leave_count,
+                total_duration=total_duration,
+                max_single_duration=max_single_duration,
+                leave_ratio=leave_ratio,
+                behavior_tags=behavior_tags,
+                stored_reasons=stored_risk_reasons,
+                rapid_trips=rapid_trips,
+                max_leave_density=max_leave_density,
+            )
+            
+            # S8.4.2: 生成行为详情列表
+            behavior_details = self._generate_behavior_details(events, behavior_tags)
+            
+            # S8.4.3-b: 生成审核建议
+            review_suggestion = self._generate_review_suggestion(risk_level)
+
+            return {
+                "has_analysis": True,
+                "exam_duration": exam_duration,
+                "leave_ratio": leave_ratio,
+                "max_single_duration": max_single_duration,
+                "average_leave_duration": average_leave_duration,
+                "risk_reason": risk_reason,
+                "behavior_tags": behavior_tags,
+                "behavior_details": behavior_details,
+                "review_suggestion": review_suggestion,
+            }
+
+        except Exception as e:
+            logger.error(
+                "生成监考分析失败: record_id=%s, error=%s",
+                exam_record.id if exam_record else "unknown",
+                str(e),
+            )
+            return default_analysis
+
+    @staticmethod
+    def _calc_exam_duration(exam_record: ExamRecord) -> int:
+        """计算考试总时长（秒）"""
+        if not exam_record or not exam_record.started_at:
+            return 0
+        try:
+            end_time = exam_record.submitted_at or datetime.now()
+            duration = (end_time - exam_record.started_at).total_seconds()
+            return max(int(duration), 0)
+        except Exception:
+            return 0
+
+    @staticmethod
+    def _calc_max_single_duration(events: list) -> int:
+        """计算单次最长离开时长（秒）"""
+        if not events:
+            return 0
+        max_duration_ms = 0
+        for event in events:
+            duration = event.get("duration", 0)
+            if duration > max_duration_ms:
+                max_duration_ms = duration
+        return max_duration_ms // 1000
+
+    @staticmethod
+    def _calc_leave_ratio(total_duration: int, exam_duration: int) -> float:
+        """计算离开时间占比（%）"""
+        if exam_duration <= 0:
+            return 0.0
+        return round(total_duration / exam_duration * 100, 2)
+
+    @staticmethod
+    def _calc_average_leave_duration(total_duration: int, leave_count: int) -> float:
+        """计算平均每次离开时长（秒）"""
+        if leave_count <= 0:
+            return 0.0
+        return round(total_duration / leave_count, 2)
+
+    @staticmethod
+    def _generate_risk_reason(
+        risk_level: str,
+        leave_count: int,
+        total_duration: int,
+        max_single_duration: int,
+        leave_ratio: float,
+    ) -> str:
+        """生成风险原因说明（V1 - 保持向后兼容）"""
+        if leave_count == 0:
+            return "考试过程中未检测到离开行为，考试状态正常"
+
+        reasons = []
+
+        # 基础信息
+        reasons.append(f"离开{leave_count}次")
+        reasons.append(f"累计离开{total_duration}秒")
+
+        # 单次最长
+        if max_single_duration > 0:
+            reasons.append(f"单次最长离开{max_single_duration}秒")
+
+        # 占比
+        if leave_ratio > 0:
+            reasons.append(f"离开时间占考试时长{leave_ratio:.1f}%")
+
+        # 风险等级说明
+        level_desc = {
+            "normal": "风险等级：正常",
+            "low": "风险等级：低风险",
+            "medium": "风险等级：中风险",
+            "high": "风险等级：高风险",
+        }
+        reasons.append(level_desc.get(risk_level, f"风险等级：{risk_level}"))
+
+        # 建议
+        if risk_level in ("high", "medium"):
+            reasons.append("建议人工复核")
+
+        return "，".join(reasons) + "。"
+
+    @staticmethod
+    def _generate_risk_reason_v2(
+        risk_level: str,
+        leave_count: int,
+        total_duration: int,
+        max_single_duration: int,
+        leave_ratio: float,
+        behavior_tags: list = None,
+        stored_reasons: list = None,
+        rapid_trips: int = 0,
+        max_leave_density: float = 0.0,
+    ) -> str:
+        """S8.4.2: 生成增强版风险原因说明
+        
+        整合基础指标 + 行为标签 + 存储的详细原因
+        """
+        behavior_tags = behavior_tags or []
+        stored_reasons = stored_reasons or []
+        
+        if leave_count == 0:
+            return "考试过程中未检测到离开行为，考试状态正常"
+
+        reasons = []
+
+        # 基础信息
+        reasons.append(f"考试期间共离开{leave_count}次")
+        if total_duration > 0:
+            reasons.append(f"累计离开时长{total_duration}秒")
+
+        # S8.4.2: 存储的详细原因优先展示
+        if stored_reasons:
+            reasons.extend(stored_reasons)
+        else:
+            # 无存储原因时，根据指标生成
+            if max_single_duration > 0:
+                reasons.append(f"单次最长离开{max_single_duration}秒")
+            if leave_ratio > 0:
+                reasons.append(f"离开时间占考试时长{leave_ratio:.1f}%")
+
+        # S8.4.2: 异常标签说明
+        tag_desc_map = {
+            'rapid_leave_return': '存在快速离开返回行为',
+            'long_leave': '存在长时间离开',
+            'frequent_leave': '离开行为集中',
+            'network_related': '部分离开与网络异常相关',
+            'refresh_attempt': '检测到页面刷新尝试',
+        }
+        for tag in behavior_tags:
+            if tag in tag_desc_map and tag_desc_map[tag] not in stored_reasons:
+                reasons.append(tag_desc_map[tag])
+
+        # S8.4.2: 补充量化指标
+        if rapid_trips > 0 and rapid_trips < 3:
+            reasons.append(f"其中{rapid_trips}次为快速离开返回")
+        
+        if max_leave_density > 0.6:
+            reasons.append(f"离开集中时段密度{max_leave_density}次/分钟")
+
+        # 风险等级说明
+        level_desc = {
+            "normal": "风险等级：正常",
+            "low": "风险等级：低风险",
+            "medium": "风险等级：中风险",
+            "high": "风险等级：高风险",
+        }
+        reasons.append(level_desc.get(risk_level, f"风险等级：{risk_level}"))
+
+        # 建议
+        if risk_level in ("high", "medium"):
+            reasons.append("建议人工复核")
+
+        return "，".join(reasons) + "。"
+
+    @staticmethod
+    def _generate_behavior_details(events: list, behavior_tags: list) -> list:
+        """S8.4.2/S8.4.5: 生成行为详情列表供HR展示
+
+        提取关键异常事件，生成可读的行为描述：
+        - S8.4.2: 带标签的 exam_leave 事件
+        - S8.4.5: 异常中断恢复 / 网络异常 / 设备方向变化 / 刷新尝试事件
+        """
+        if not events:
+            return []
+
+        behavior_tags = behavior_tags or []
+        details = []
+
+        def _fmt_time(ts):
+            if not ts:
+                return ''
+            try:
+                from datetime import datetime
+                return datetime.fromtimestamp(ts / 1000).strftime('%H:%M:%S')
+            except Exception:
+                return str(ts)
+
+        def _fmt_duration(duration_ms):
+            return f"{duration_ms // 1000}秒" if duration_ms and duration_ms > 0 else ''
+
+        # 找出带标签的 exam_leave 事件
+        leave_events = [e for e in events if e.get('type') == 'exam_leave']
+
+        for leave_event in leave_events:
+            tags = leave_event.get('tags', [])
+            if not tags:
+                continue
+
+            duration = leave_event.get('duration', 0)
+
+            # 生成标签描述
+            tag_labels = {
+                'rapid_leave_return': '⚡ 快速返回',
+                'long_leave': '⏱️ 长时间离开',
+                'frequent_leave': '📊 高频离开',
+                'network_related': '📡 网络相关',
+                'recovered': '🔄 异常中断恢复',
+            }
+
+            tag_texts = [tag_labels.get(t, t) for t in tags]
+
+            detail = {
+                'time': _fmt_time(leave_event.get('timestamp', 0)),
+                'duration': _fmt_duration(duration) or '进行中',
+                'tags': tags,
+                'tag_texts': tag_texts,
+            }
+            details.append(detail)
+
+        # S8.4.5: 异常恢复 / 网络 / 方向 / 刷新事件的可读描述
+        special_descriptions = {
+            'leave_recovered': '检测到考试页面异常关闭后恢复',
+            'network_offline': '检测到考试期间网络异常中断',
+            'network_online': '检测到网络连接恢复',
+            'orientation_change': '检测到设备方向变化',
+            'refresh_attempt': '检测到页面刷新尝试',
+        }
+
+        for event in events:
+            etype = event.get('type', '')
+            if etype not in special_descriptions:
+                continue
+
+            duration = event.get('duration', 0)
+            detail = {
+                'time': _fmt_time(event.get('timestamp', 0)),
+                'duration': _fmt_duration(duration) or '-',
+                'tags': [etype],
+                'tag_texts': [special_descriptions[etype]],
+            }
+            details.append(detail)
+
+        # 按时间排序后限制数量
+        details.sort(key=lambda x: x.get('time', ''))
+        return details[-10:]  # 最多返回最近10条
+
+    @staticmethod
+    def _generate_review_suggestion(risk_level: str) -> str:
+        """S8.4.3-b: 根据风险等级生成系统审核建议
+        
+        仅作为HR辅助参考，不参与评分，不影响最终成绩。
+        明确排除判断性词语（如"作弊"、"违规"）。
+        
+        Args:
+            risk_level: 风险等级 normal/low/medium/high
+        
+        Returns:
+            str: 审核建议文案
+        """
+        suggestion_map = {
+            'normal': '考试行为正常，无明显异常，可直接查看成绩',
+            'low': '存在轻微异常行为，建议正常查看',
+            'medium': '建议人工查看异常时间段答题情况',
+            'high': '建议重点复核离开期间的答题内容',
+        }
+        return suggestion_map.get(risk_level, '')
 
     def update_hr_review(
         self,

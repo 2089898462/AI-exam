@@ -52,6 +52,9 @@ class ExamRecord(Base):
     grading_record = relationship(
         "GradingRecord", back_populates="exam_record", uselist=False, cascade="all, delete-orphan"
     )
+    monitor_summary = relationship(
+        "ExamMonitorSummary", back_populates="exam_record", uselist=False, cascade="all, delete-orphan"
+    )
 
     def __repr__(self):
         return f"<ExamRecord(id={self.id}, exam_id={self.exam_id}, candidate={self.candidate_name}, status={self.status})>"

@@ -2,7 +2,99 @@
 
 > **本文件记录项目重大技术变更索引，不记录详细开发过程。**
 >
-> 最后更新：2026-08-13
+> 最后更新：2026-08-21
+
+# S8.4.7 考试开始前诚信警示弹窗
+
+**时间**：2026-08-21
+**版本**：S8.4.7
+**结果**：✅ 完成
+
+**变更内容**：
+首次开始考试（not_started）前弹出不可关闭的"考试诚信承诺提示"威慑弹窗，考生必须点击"我已知悉，开始考试"后考试才真正开始：
+1. 文案告知：全程智能监考监测、禁止切屏/锁屏/离开页面、禁止小窗/分屏/悬浮窗及搜索 AI 工具查答案、切屏行为自动记录并提交人工审核、需独立作答；
+2. 弹窗不可关闭（无取消键/无右上角X/ESC无效/点遮罩无效），杜绝跳过；
+3. 仅首次开始考试弹出；断点恢复（in_progress）与已提交状态不弹；
+4. 移动端适配：≤480px 弹窗宽度 88%、确认按钮触摸目标 ≥44px。
+
+**修改文件**：
+| 文件 | 说明 |
+|------|------|
+| `frontend/src/views/exam/Exam.vue` | loadPaper not_started 分支前置 ElMessageBox 警示弹窗；末尾新增弹窗移动端全局样式 |
+
+**兼容性**：无 API/数据库/考试流程变更；弹窗 await 在 try 块内，与既有错误处理链路一致。
+
+# S8.4.6 监考闭环回归验证与稳定性优化
+
+**时间**：2026-08-21
+**版本**：S8.4.6
+**结果**：✅ 完成（回归验证通过 + 2 处修复）
+
+**变更内容**：
+监考功能全链路闭环回归验证（S8.4.4 状态恢复 + S8.4.5 HR 展示）及稳定性优化，不新增功能：
+1. **修复** `exam_record_service._calculate_max_single_duration` 漏算 `leave_recovered` 事件的缺陷：S8.4.4 异常中断补偿事件携带真实离开时长，原逻辑仅统计 `exam_leave`，导致该场景下单次最长离开时长被低估（`long_leave` 标签漏报）；
+2. **日志优化** `useMonitor.js`：新增 `MONITOR_DEBUG` 开关与 `mlog()` 函数，全部调试日志（`console.log('[Monitor]'`）改经开关输出——开发环境自动开启、生产环境关闭（可通过 `localStorage.setItem('monitor_debug','1')` 临时开启）；`console.warn/error` 关键错误日志无条件保留；
+3. **回归验证通过**：刷新恢复/切屏检测/浏览器被杀恢复（leave_recovered 补偿）/HR 详情展示/历史数据兼容/提交后缓存清理/多标签页隔离/MAX_EVENTS 限制，详见《S8.4.6 回归测试报告》。
+
+**修改文件**：
+| 文件 | 说明 |
+|------|------|
+| `backend/app/services/exam_record_service.py` | `_calculate_max_single_duration` 纳入 leave_recovered 事件时长 |
+| `frontend/src/hooks/useMonitor.js` | MONITOR_DEBUG 开关 + mlog() 替换全部调试日志 |
+
+**兼容性**：无数据库/API/考试流程变更；Node 端到端逻辑测试（真实源码打包运行）18/18 通过，后端风险分析单测 8/8 通过，旧格式数据（无 duration 字段）容错正常。
+
+# S8.4.5 监考异常展示优化
+
+**时间**：2026-08-21
+**版本**：S8.4.5
+**结果**：✅ 完成
+
+**变更内容**：
+HR 端监考详情从"技术事件展示"升级为"HR 可理解的异常分析展示"：
+1. 前端新增 `monitorEventMap` 事件中文映射（label/icon/type），时间线显示"🔄 异常中断恢复"等中文+图标，未知事件兜底显示"其他监考事件"（不显示 undefined/原始英文名）；
+2. 时间线每条事件增加详情说明（`eventDescription`：按类型生成如"浏览器后台恢复，离开60秒"）；
+3. 风险摘要卡片新增"主要原因"结构化列表（离开概况/超5分钟离开/网络关联/异常恢复/高频切换/刷新尝试，兜底 risk_reason）；
+4. 审核建议改为"💡 审核建议"标题 + 描述文案，按风险等级生成（normal/low/medium/high）；
+5. 后端 `_generate_monitor_analysis` 按事件类型注入中文行为标签（异常中断恢复/网络异常/设备方向变化），`_generate_behavior_details` 覆盖 leave_recovered/network_offline/orientation_change/refresh_attempt 事件的可读描述。
+
+**修改文件**：
+| 文件 | 说明 |
+|------|------|
+| `frontend/src/views/admin/grading/GradingResultDetail.vue` | monitorEventMap / eventDescription / riskReasonList / 审核建议样式 |
+| `backend/app/services/grading_service.py` | 事件驱动中文标签注入、行为详情扩展、审核建议文案对齐 |
+
+**兼容性**：纯展示层与分析层增强，无数据库/API 结构变更；历史考试（无 analysis/events 字段）正常兜底显示。
+
+# S8.4.4 考试状态恢复与监考数据持久化修复
+
+**时间**：2026-08-21
+**版本**：S8.4.4
+**结果**：✅ 完成
+
+**问题描述**：
+S8.4 监考增强后出现回归：刷新考试页面倒计时重新开始；手机切出浏览器再返回倒计时重置；页面重新加载后监考事件全部丢失；切屏 leave/return 事件无法稳定记录。
+
+**根因**：
+1. 倒计时基于 `Date.now()` 页面加载时刻初始化，无服务器时间基准，刷新即重置（`started_at` 数据库有值但 `/paper` 接口不返回）；
+2. useMonitor.js 监考数据仅存于 Vue 内存 ref，页面刷新/浏览器回收即全部丢失；
+3. S8.3.4.x 的 `scheduleAction` 合并窗口在 leave pending 期间收到 return 时直接丢弃 return 事件，导致单会话内切屏检测失效（S8.4.3-d 已修复）。
+
+**修复方案**：
+1. `ExamPaperResponse` 新增 `started_at`/`server_time` 字段，前端以「开始时间 + 总时长 - 服务器当前时间（经时钟偏差校准）」计算真实剩余时间，刷新/切后台恢复且防系统时间篡改；
+2. useMonitor.js 引入 sessionStorage 持久化（key: `exam_monitor_{recordId}`），事件变化实时写入，`startMonitoring` 恢复历史数据而非清零；上次会话在隐藏状态被终止时生成 `leave_recovered` 补偿事件；提交成功后由 Exam.vue 调用 `clearPersistedData` 清除缓存。
+
+**修改文件**：
+| 文件 | 说明 |
+|------|------|
+| `backend/app/schemas/exam_record.py` | L154-156 ExamPaperResponse 新增 started_at / server_time |
+| `backend/app/api/v1/endpoints/exam_records.py` | L166-168 /paper 接口返回两字段 |
+| `frontend/src/views/exam/Exam.vue` | 倒计时重构为服务器时间锚点计算；切后台返回立即校准；startMonitoring 传 recordId；提交成功清除监考缓存 |
+| `frontend/src/hooks/useMonitor.js` | sessionStorage 持久化/恢复/补偿/清除；全事件点接入 persistData |
+
+**兼容性**：新增字段均为可选，旧考试记录正常访问；无数据库结构变更，无需 Alembic 迁移。
+
+**注意事项**：后端服务需重启才能生效（开发服务器未开 --reload 时）。
 
 # S7.2 start-system.bat 前端启动路径修复
 

@@ -8,10 +8,10 @@ echo ========================================
 echo.
 
 echo [1/3] Starting Backend...
-start "AI-Exam Backend" cmd /k "cd /d %BASEDIR%backend && python -m uvicorn main:app --host 0.0.0.0 --port 8000"
+start "AI-Exam Backend" cmd /k "cd /d %BASEDIR%backend && python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
 
 echo [2/3] Starting AI Service...
-start "AI-Exam AI-Service" cmd /k "cd /d %BASEDIR%ai-service && python -m uvicorn main:app --host 0.0.0.0 --port 8001"
+start "AI-Exam AI-Service" cmd /k "cd /d %BASEDIR%ai-service && python -m uvicorn main:app --host 0.0.0.0 --port 8001 --reload"
 
 echo [3/3] Starting Frontend...
 start "AI-Exam Frontend" cmd /k "cd /d %BASEDIR%frontend && npm run dev"

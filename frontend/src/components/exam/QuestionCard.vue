@@ -134,6 +134,7 @@ function handleAnswer(val) {
   margin-bottom: 16px;
   padding-bottom: 12px;
   border-bottom: 1px solid #f0f0f0;
+  flex-wrap: wrap;
 }
 
 .question-no {
@@ -161,5 +162,52 @@ function handleAnswer(val) {
 
 .question-body {
   min-height: 100px;
+}
+
+/* 移动端优化 */
+@media (max-width: 768px) {
+  .question-card {
+    padding: 16px;
+    border-radius: 10px;
+  }
+
+  .question-header {
+    gap: 8px;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+  }
+
+  .question-no {
+    font-size: 15px;
+  }
+
+  .question-score {
+    margin-left: 0;
+  }
+
+  .question-content {
+    font-size: 15px;
+    line-height: 1.75;
+    margin-bottom: 16px;
+  }
+
+  .question-body {
+    min-height: 80px;
+  }
+}
+
+@media (max-width: 380px) {
+  .question-card {
+    padding: 14px;
+  }
+
+  .question-no {
+    font-size: 14px;
+  }
+
+  .question-content {
+    font-size: 14px;
+    line-height: 1.7;
+  }
 }
 </style>

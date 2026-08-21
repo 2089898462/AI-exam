@@ -203,8 +203,8 @@ export const useExamStore = defineStore('exam', {
       this.status = res.data.status
       return res.data
     },
-    async submitExam() {
-      const res = await examRecordApi.submitExam(this.recordId)
+    async submitExam(monitorData = null) {
+      const res = await examRecordApi.submitExam(this.recordId, monitorData)
       this.status = res.data.status
       return res.data
     },

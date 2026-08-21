@@ -6,7 +6,7 @@ export const examRecordApi = {
   getRecord: (id) => request.get(`/exam-records/${id}`),
   getExamPaper: (recordId) => request.get(`/exam-records/${recordId}/paper`),
   startExam: (id) => request.post(`/exam-records/${id}/start`),
-  submitExam: (id) => request.post(`/exam-records/${id}/submit`),
+  submitExam: (id, monitorData = null) => request.post(`/exam-records/${id}/submit`, { monitor_data: monitorData }),
   saveAnswer: (recordId, data) => request.post(`/exam-records/${recordId}/answers`, data),
   saveAnswersBatch: (recordId, data) => request.post(`/exam-records/${recordId}/answers/batch`, data),
   getAnswers: (recordId) => request.get(`/exam-records/${recordId}/answers`),
